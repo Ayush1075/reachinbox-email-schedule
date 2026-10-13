@@ -12,6 +12,7 @@ import { emailsRouter } from './routes/emails';
 import { healthRouter } from './routes/health';
 import { searchRouter } from './routes/search';
 import { sendersRouter } from './routes/senders';
+import { slackRouter } from './routes/slack';
 
 export function createApp() {
   const app = express();
@@ -31,6 +32,7 @@ export function createApp() {
   app.use('/api/campaigns', campaignsRouter);
   app.use('/api/emails', emailsRouter);
   app.use('/api/search', searchRouter);
+  app.use('/api/slack', slackRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

@@ -19,6 +19,7 @@ import { resolveEffectiveLimit } from '../services/limits';
 import { sendEmail } from '../services/mailer';
 import { acquireSendSlot } from '../services/rateLimiter';
 import { indexEmailJobs } from '../services/search';
+import { notifyRateLimitHit } from '../services/slack';
 
 /** SMTP 5xx replies are permanent (bad mailbox, auth rejected, policy) — retrying won't help. */
 function isPermanentSmtpError(err: unknown): boolean {
@@ -97,6 +98,8 @@ export async function processEmailJob(job: Job<EmailJobData>, token?: string): P
       });
       log.warn({ senderId: sender.id, limit, used: slot.usedThisWindow, nextAt: new Date(next) }, 'Hourly limit reached; deferred to next window');
       void indexEmailJobs([emailJobId]);
+      // Fire-and-forget: Slack being slow, down or absent never blocks sending.
+      void notifyRateLimitHit({ userId: email.campaign.userId, sender, limit, windowEndsAt: slot.windowEndsAt });
       return deferJob(job, token, next);
     }
     const next = Date.now() + slot.retryAfterMs;
