@@ -30,7 +30,7 @@ export function SearchBar({ value, onChange }: { value: SearchState; onChange: (
         <Input
           type="search"
           aria-label="Search emails by recipient, subject or body"
-          placeholder="Search recipient, subject, body…"
+          placeholder="Search emails…"
           value={value.q}
           onChange={(e) => onChange({ ...value, q: e.target.value })}
           className="pr-8 pl-9"
