@@ -1,6 +1,9 @@
 import { createApp } from './app';
 import { env } from './config/env';
 import { logger } from './lib/logger';
+import { ensureSearchIndex } from './services/search';
+
+void ensureSearchIndex();
 
 const app = createApp();
 const server = app.listen(env.PORT, () => {

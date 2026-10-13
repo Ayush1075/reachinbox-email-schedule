@@ -8,6 +8,7 @@ import { requestLogger } from './middleware/requestLogger';
 import { BULL_BOARD_PATH, createAdminRouter } from './routes/admin';
 import { authRouter } from './routes/auth';
 import { healthRouter } from './routes/health';
+import { searchRouter } from './routes/search';
 import { sendersRouter } from './routes/senders';
 
 export function createApp() {
@@ -25,6 +26,7 @@ export function createApp() {
   app.use(BULL_BOARD_PATH, createAdminRouter());
   app.use('/api/auth', authRouter);
   app.use('/api/senders', sendersRouter);
+  app.use('/api/search', searchRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
