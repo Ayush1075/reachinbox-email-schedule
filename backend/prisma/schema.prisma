@@ -13,7 +13,10 @@ datasource db {
 
 model User {
   id               String     @id @default(uuid())
-  googleId         String     @unique
+  /// Null for accounts that only use email + password.
+  googleId         String?    @unique
+  /// scrypt hash (see src/services/passwords.ts); null for Google-only accounts.
+  passwordHash     String?
   email            String     @unique
   name             String
   avatarUrl        String?
@@ -27,6 +30,7 @@ model User {
   createdAt        DateTime   @default(now())
   campaigns        Campaign[]
   senders          Sender[]
+  attachments      Attachment[]
 
   @@map("users")
 }
@@ -59,6 +63,8 @@ model Campaign {
   user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   subject         String
   body            String         @db.Text
+  /// Body is sanitized HTML from the rich-text editor (false for plain-text campaigns).
+  bodyIsHtml      Boolean        @default(false)
   startAt         DateTime
   delayBetweenMs  Int
   /// Optional per-sender hourly cap requested for this campaign; can only lower the sender's own cap.
@@ -69,6 +75,7 @@ model Campaign {
   plannedEndAt    DateTime?
   createdAt       DateTime       @default(now())
   emailJobs       EmailJob[]
+  attachments     Attachment[]
 
   @@index([userId, createdAt])
   @@map("campaigns")
@@ -83,6 +90,7 @@ model EmailJob {
   recipient       String
   subject         String
   body            String      @db.Text
+  bodyIsHtml      Boolean     @default(false)
   scheduledAt     DateTime
   sentAt          DateTime?
   status          EmailStatus @default(SCHEDULED)
@@ -96,6 +104,12 @@ model EmailJob {
   bullJobId       String?     @unique
   /// `${campaignId}:${sequenceIndex}` — a recipient slot can only ever exist once.
   idempotencyKey  String      @unique
+
+  // Mailbox organisation (dashboard only; never affects delivery).
+  starred         Boolean     @default(false)
+  archivedAt      DateTime?
+  /// Hidden from every list. Only set on emails that are already SENT/FAILED/CANCELLED.
+  deletedAt       DateTime?
 
   // ── Worker claim (idempotency layer 2) ───────────────────────────────────
   // A worker atomically moves the row to PROCESSING and stamps its BullMQ lock
@@ -114,6 +128,25 @@ model EmailJob {
   @@index([senderId, sentAt])
   @@index([senderId, status, scheduledAt])
   @@map("email_jobs")
+}
+
+/// A file sent with every email of a campaign. Uploaded before the campaign
+/// exists (campaignId null), then claimed by it at creation.
+model Attachment {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaignId  String?
+  campaign    Campaign? @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  filename    String
+  contentType String
+  size        Int
+  data        Bytes
+  createdAt   DateTime  @default(now())
+
+  @@index([campaignId])
+  @@index([userId, createdAt])
+  @@map("attachments")
 }
 
 enum EmailStatus {

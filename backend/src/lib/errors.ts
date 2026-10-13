@@ -22,6 +22,9 @@ export class AppError extends Error {
   static conflict(message: string) {
     return new AppError(409, 'CONFLICT', message);
   }
+  static tooManyRequests(message: string) {
+    return new AppError(429, 'TOO_MANY_REQUESTS', message);
+  }
   static unavailable(message: string) {
     return new AppError(503, 'SERVICE_UNAVAILABLE', message);
   }
