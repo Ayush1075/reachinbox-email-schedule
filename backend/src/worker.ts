@@ -9,6 +9,7 @@ import { logger } from './lib/logger';
 import { redis } from './queue/connection';
 import { emailQueue } from './queue/emailQueue';
 import { closeAllTransports } from './services/mailer';
+import { startReconciler } from './services/reconciler';
 import { ensureSearchIndex } from './services/search';
 import { createEmailWorker } from './workers/emailWorker';
 
@@ -18,6 +19,7 @@ async function main() {
 
   const worker = createEmailWorker();
   await worker.waitUntilReady();
+  const stopReconciler = await startReconciler();
   logger.info(
     { queue: env.QUEUE_NAME, concurrency: env.WORKER_CONCURRENCY, maxPerHour: env.MAX_EMAILS_PER_HOUR },
     'Email worker started',
@@ -37,6 +39,7 @@ async function main() {
     force.unref();
     try {
       await worker.close(); // stops fetching, waits for active jobs
+      await stopReconciler();
       await emailQueue.close();
       await closeAllTransports();
       await redis.quit();

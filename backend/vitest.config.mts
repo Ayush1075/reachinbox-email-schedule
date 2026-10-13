@@ -4,6 +4,8 @@ export default defineConfig({
   test: {
     include: ['tests/**/*.test.ts'],
     testTimeout: 20_000,
+    // Integration files share the test queue; run them one at a time.
+    fileParallelism: false,
     // Deterministic config for modules that import src/config/env.ts.
     // Integration tests talk to the docker-compose Redis/Postgres.
     env: {
