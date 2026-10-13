@@ -119,6 +119,24 @@ describe('email worker', () => {
     expect(await redis.exists(sentMarkerKey(email.id))).toBe(1);
   });
 
+  it('sends HTML bodies with a plain-text alternative and the campaign attachments', async () => {
+    const email = await createEmail();
+    await prisma.emailJob.update({ where: { id: email.id }, data: { body: '<p>Hello <strong>there</strong></p>', bodyIsHtml: true } });
+    await prisma.attachment.create({
+      data: { userId, campaignId, filename: 'notes.txt', contentType: 'text/plain', size: 11, data: new Uint8Array(Buffer.from('hello world')) },
+    });
+    await enqueue(email.id);
+    await waitFor(() => status(email.id), (r) => r.status === EmailStatus.SENT);
+
+    const data = sink.messages[0]!.data;
+    expect(data).toContain('Content-Type: text/html');
+    expect(data).toContain('<strong>there</strong>');
+    expect(data).toContain('Content-Type: text/plain');
+    expect(data).toMatch(/Hello\s+THERE|Hello there/);
+    expect(data).toContain('filename=notes.txt');
+    expect(data).toContain(Buffer.from('hello world').toString('base64'));
+  });
+
   it('ignores a duplicate enqueue with the same jobId (layer 1)', async () => {
     const email = await createEmail();
     await Promise.all([enqueue(email.id), enqueue(email.id), enqueue(email.id)]);

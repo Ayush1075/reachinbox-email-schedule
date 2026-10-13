@@ -5,6 +5,7 @@ import { prisma } from '../db/prisma';
 import { logger } from '../lib/logger';
 import { createRedisConnection } from '../queue/connection';
 import type { EmailJobData } from '../queue/emailQueue';
+import { loadCampaignAttachments } from '../services/attachments';
 import { refreshCampaignStatus } from '../services/campaigns';
 import {
   claimEmailJob,
@@ -108,6 +109,9 @@ export async function processEmailJob(job: Job<EmailJobData>, token?: string): P
     return deferJob(job, token, next);
   }
 
+  // Load before the checkpoint: a failure here is an ordinary retry, not an ambiguous mid-send.
+  const attachments = await loadCampaignAttachments(campaignId);
+
   // Final checkpoint: still ours? (Fails if this worker stalled and was superseded.)
   if (!(await markSendStarted(emailJobId, token))) {
     log.warn('Claim lost before SMTP handoff; not sending');
@@ -122,6 +126,8 @@ export async function processEmailJob(job: Job<EmailJobData>, token?: string): P
       to: email.recipient,
       subject: email.subject,
       body: email.body,
+      isHtml: email.bodyIsHtml,
+      attachments,
     });
     const sentMarker = { ...result, sentAt: new Date().toISOString() };
     // Marker first: if the DB write below fails, the retry finalises from it.

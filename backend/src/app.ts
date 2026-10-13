@@ -6,6 +6,7 @@ import { env } from './config/env';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { requestLogger } from './middleware/requestLogger';
 import { BULL_BOARD_PATH, createAdminRouter } from './routes/admin';
+import { attachmentsRouter } from './routes/attachments';
 import { authRouter } from './routes/auth';
 import { campaignsRouter } from './routes/campaigns';
 import { configRouter } from './routes/config';
@@ -31,6 +32,7 @@ export function createApp() {
   app.use('/api/auth', authRouter);
   app.use('/api/config', configRouter);
   app.use('/api/senders', sendersRouter);
+  app.use('/api/attachments', attachmentsRouter);
   app.use('/api/campaigns', campaignsRouter);
   app.use('/api/emails', emailsRouter);
   app.use('/api/search', searchRouter);

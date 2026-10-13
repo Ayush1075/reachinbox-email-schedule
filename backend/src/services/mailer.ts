@@ -1,6 +1,7 @@
 import nodemailer, { type Transporter } from 'nodemailer';
 import type { Sender } from '@prisma/client';
 import { decrypt } from '../lib/crypto';
+import { htmlToPlainText } from './html';
 
 /**
  * One pooled SMTP transport per sender, reused across jobs. The cache key
@@ -42,6 +43,9 @@ export type SendInput = {
   to: string;
   subject: string;
   body: string;
+  /** Body is sanitized HTML; a plain-text alternative is derived from it. */
+  isHtml: boolean;
+  attachments: { filename: string; contentType: string; content: Buffer }[];
 };
 
 export type SendResult = { messageId: string; previewUrl: string | null };
@@ -53,7 +57,8 @@ export async function sendEmail(sender: Sender, input: SendInput): Promise<SendR
     from: { name: input.fromName, address: input.from },
     to: input.to,
     subject: input.subject,
-    text: input.body,
+    ...(input.isHtml ? { html: input.body, text: htmlToPlainText(input.body) } : { text: input.body }),
+    attachments: input.attachments,
     // Deterministic Message-ID: if a send were ever repeated, receiving
     // servers and clients can recognise it as the same message.
     messageId: `<${input.emailJobId}@${domain}>`,

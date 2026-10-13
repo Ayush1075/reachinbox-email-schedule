@@ -14,12 +14,14 @@ const emailSchema = z.string().trim().toLowerCase().email();
 
 const createCampaignSchema = z.object({
   subject: z.string().trim().min(1, 'Subject is required').max(300),
-  body: z.string().min(1, 'Body is required').max(50_000),
+  body: z.string().min(1, 'Body is required').max(200_000),
   recipients: z.array(z.string()).min(1, 'At least one recipient is required').max(MAX_RECIPIENTS),
   startAt: z.coerce.date(),
   delayBetweenMs: z.coerce.number().int().min(0).max(60 * 60 * 1000),
   hourlyLimit: z.coerce.number().int().positive().max(100_000).nullish(),
   senderIds: z.array(z.string().uuid()).min(1, 'Select at least one sender'),
+  bodyFormat: z.enum(['text', 'html']).default('text'),
+  attachmentIds: z.array(z.string().uuid()).max(5).default([]),
 });
 
 /** Normalise, validate and de-duplicate recipients (order preserved). */

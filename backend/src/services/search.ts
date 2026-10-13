@@ -32,6 +32,8 @@ export async function ensureSearchIndex() {
           userId: { type: 'keyword' },
           scheduledAt: { type: 'date' },
           sentAt: { type: 'date' },
+          starred: { type: 'boolean' },
+          hidden: { type: 'boolean' },
         },
       },
     });
@@ -63,6 +65,9 @@ export async function indexEmailJobs(ids: string[]): Promise<void> {
           userId: r.campaign.userId,
           scheduledAt: r.scheduledAt,
           sentAt: r.sentAt,
+          starred: r.starred,
+          /** Archived or deleted: excluded from search. */
+          hidden: r.archivedAt !== null || r.deletedAt !== null,
         },
       ]);
       const res = await es.bulk({ operations, refresh: false });
@@ -95,7 +100,7 @@ export async function indexEmailJobsByCampaign(campaignId: string): Promise<void
 export type SearchParams = {
   userId: string;
   q?: string | undefined;
-  status?: EmailStatus | undefined;
+  statuses: EmailStatus[];
   from?: Date | undefined;
   to?: Date | undefined;
   page: number;
@@ -111,9 +116,9 @@ export async function searchEmails(params: SearchParams) {
   }
 }
 
-async function searchElasticsearch({ userId, q, status, from, to, page, limit }: SearchParams) {
+async function searchElasticsearch({ userId, q, statuses, from, to, page, limit }: SearchParams) {
   const filter: object[] = [{ term: { userId } }];
-  if (status) filter.push({ term: { status } });
+  if (statuses.length > 0) filter.push({ terms: { status: statuses } });
   if (from || to) filter.push({ range: { scheduledAt: { ...(from && { gte: from }), ...(to && { lte: to }) } } });
 
   const res = await es.search<{ scheduledAt: string }>({
@@ -124,6 +129,7 @@ async function searchElasticsearch({ userId, q, status, from, to, page, limit }:
     query: {
       bool: {
         filter,
+        must_not: [{ term: { hidden: true } }],
         ...(q && {
           must: [
             {
@@ -156,10 +162,12 @@ async function searchElasticsearch({ userId, q, status, from, to, page, limit }:
   };
 }
 
-async function searchPostgres({ userId, q, status, from, to, page, limit }: SearchParams) {
+async function searchPostgres({ userId, q, statuses, from, to, page, limit }: SearchParams) {
   const where: Prisma.EmailJobWhereInput = {
     campaign: { userId },
-    ...(status && { status }),
+    deletedAt: null,
+    archivedAt: null,
+    ...(statuses.length > 0 && { status: { in: statuses } }),
     ...((from || to) && { scheduledAt: { ...(from && { gte: from }), ...(to && { lte: to }) } }),
     ...(q && {
       OR: [

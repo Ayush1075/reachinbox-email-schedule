@@ -2,13 +2,16 @@ import { EmailStatus, type Prisma } from '@prisma/client';
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../db/prisma';
+import { AppError } from '../lib/errors';
 import { ok, parse } from '../lib/http';
 import { HOUR_MS, hourWindowStart } from '../lib/time';
 import { currentUserId, requireAuth } from '../middleware/requireAuth';
-import { ACTIVE_STATUSES, cancelEmail } from '../services/campaigns';
+import { attachmentMeta } from '../services/attachments';
+import { ACTIVE_STATUSES, cancelEmail, PENDING_STATUSES } from '../services/campaigns';
 import { emailSenderSelect, toPublicEmail } from '../services/emails';
 import { resolveSenderCap } from '../services/limits';
 import { getCurrentWindowUsage } from '../services/rateLimiter';
+import { indexEmailJobs } from '../services/search';
 
 export const emailsRouter = Router();
 emailsRouter.use(requireAuth);
@@ -26,6 +29,9 @@ const listSchema = z.object({
     .pipe(z.array(z.nativeEnum(EmailStatus))),
   sort: z.enum(SORT_FIELDS).optional(),
   order: z.enum(['asc', 'desc']).optional(),
+  starred: z.enum(['true', 'false']).optional().transform((v) => v === 'true'),
+  /** Archived emails are hidden from lists unless asked for explicitly. */
+  archived: z.enum(['true', 'false']).optional().transform((v) => v === 'true'),
 });
 
 type ListQuery = z.infer<typeof listSchema>;
@@ -36,9 +42,15 @@ async function listEmails(
   query: ListQuery,
   defaultOrder: Prisma.EmailJobOrderByWithRelationInput[],
 ) {
-  const { page, limit, status, sort, order = 'asc' } = query;
+  const { page, limit, status, sort, order = 'asc', starred, archived } = query;
   const statuses = status.length > 0 ? allowed.filter((s) => status.includes(s)) : allowed;
-  const where: Prisma.EmailJobWhereInput = { campaign: { userId }, status: { in: statuses } };
+  const where: Prisma.EmailJobWhereInput = {
+    campaign: { userId },
+    status: { in: statuses },
+    deletedAt: null,
+    archivedAt: archived ? { not: null } : null,
+    ...(starred && { starred: true }),
+  };
   const orderBy: Prisma.EmailJobOrderByWithRelationInput[] = sort
     ? [sort === 'sentAt' ? { sentAt: { sort: order, nulls: 'last' } } : { [sort]: order }, { id: 'asc' }]
     : defaultOrder;
@@ -145,4 +157,62 @@ emailsRouter.get('/stats', async (req, res) => {
       senders: quota,
     },
   });
+});
+
+/** Full email for the reading view: sanitized body plus the campaign's attachments. */
+emailsRouter.get('/:id', async (req, res) => {
+  const email = await prisma.emailJob.findFirst({
+    where: { id: req.params.id, campaign: { userId: currentUserId(req) }, deletedAt: null },
+    include: { sender: emailSenderSelect, campaign: { select: { attachments: { select: attachmentMeta, orderBy: { createdAt: 'asc' } } } } },
+  });
+  if (!email) throw AppError.notFound('Email not found');
+  ok(res, {
+    ...toPublicEmail(email),
+    body: email.body,
+    bodyIsHtml: email.bodyIsHtml,
+    createdAt: email.createdAt,
+    updatedAt: email.updatedAt,
+    attachments: email.campaign.attachments,
+  });
+});
+
+async function findOwnEmail(userId: string, id: string) {
+  const email = await prisma.emailJob.findFirst({ where: { id, campaign: { userId }, deletedAt: null } });
+  if (!email) throw AppError.notFound('Email not found');
+  return email;
+}
+
+/** Star / archive. Mailbox organisation only; never affects delivery. */
+emailsRouter.patch('/:id', async (req, res) => {
+  const input = parse(
+    z
+      .object({ starred: z.boolean().optional(), archived: z.boolean().optional() })
+      .refine((v) => v.starred !== undefined || v.archived !== undefined, 'Nothing to update'),
+    req.body,
+  );
+  const email = await findOwnEmail(currentUserId(req), req.params.id);
+  const updated = await prisma.emailJob.update({
+    where: { id: email.id },
+    data: {
+      ...(input.starred !== undefined && { starred: input.starred }),
+      ...(input.archived !== undefined && { archivedAt: input.archived ? new Date() : null }),
+    },
+    include: { sender: emailSenderSelect },
+  });
+  void indexEmailJobs([email.id]);
+  ok(res, toPublicEmail(updated));
+});
+
+/**
+ * Delete from the mailbox. A pending email is cancelled first so it can never
+ * go out; one mid-send can't be deleted until it finishes.
+ */
+emailsRouter.delete('/:id', async (req, res) => {
+  const userId = currentUserId(req);
+  const email = await findOwnEmail(userId, req.params.id);
+  if (email.status === EmailStatus.PROCESSING) throw AppError.conflict('This email is being sent right now; try again in a moment');
+  if (PENDING_STATUSES.includes(email.status)) await cancelEmail(userId, email.id);
+  await prisma.emailJob.update({ where: { id: email.id }, data: { deletedAt: new Date() } });
+  void indexEmailJobs([email.id]);
+  ok(res, { deleted: true });
 });

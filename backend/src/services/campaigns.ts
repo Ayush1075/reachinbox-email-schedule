@@ -7,6 +7,8 @@ import { logger } from '../lib/logger';
 import { hourWindowStart } from '../lib/time';
 import { emailQueue, enqueueEmailJobs } from '../queue/emailQueue';
 import { planSchedule } from '../queue/scheduler';
+import { claimAttachments } from './attachments';
+import { htmlToPlainText, sanitizeEmailHtml } from './html';
 import { resolveEffectiveLimit } from './limits';
 import { getCurrentWindowUsage } from './rateLimiter';
 import { indexEmailJobs, indexEmailJobsByCampaign } from './search';
@@ -28,6 +30,9 @@ export type CreateCampaignInput = {
   delayBetweenMs: number;
   hourlyLimit?: number | null;
   senderIds: string[];
+  /** 'html' bodies come from the rich-text editor and are sanitized here. */
+  bodyFormat?: 'text' | 'html';
+  attachmentIds?: string[];
 };
 
 /**
@@ -66,6 +71,10 @@ export async function createCampaign(userId: string, input: CreateCampaignInput)
   }
   const startAt = new Date(Math.max(input.startAt.getTime(), now));
 
+  const bodyIsHtml = input.bodyFormat === 'html';
+  const body = bodyIsHtml ? sanitizeEmailHtml(input.body) : input.body;
+  if (!(bodyIsHtml ? htmlToPlainText(body) : body).trim()) throw AppError.badRequest('Body is required');
+
   const senderIds = [...new Set(input.senderIds)];
   const senders = await prisma.sender.findMany({ where: { id: { in: senderIds }, userId, isActive: true } });
   if (senders.length !== senderIds.length) throw AppError.badRequest('One or more senders are unknown or inactive');
@@ -90,7 +99,8 @@ export async function createCampaign(userId: string, input: CreateCampaignInput)
       senderId: slot.senderId,
       recipient: input.recipients[slot.sequenceIndex]!,
       subject: input.subject,
-      body: input.body,
+      body,
+      bodyIsHtml,
       scheduledAt: slot.scheduledAt,
       sequenceIndex: slot.sequenceIndex,
       bullJobId: id,
@@ -106,7 +116,8 @@ export async function createCampaign(userId: string, input: CreateCampaignInput)
           id: campaignId,
           userId,
           subject: input.subject,
-          body: input.body,
+          body,
+          bodyIsHtml,
           startAt,
           delayBetweenMs: input.delayBetweenMs,
           hourlyLimit: input.hourlyLimit ?? null,
@@ -114,6 +125,7 @@ export async function createCampaign(userId: string, input: CreateCampaignInput)
           plannedEndAt: plan.endsAt,
         },
       });
+      await claimAttachments(tx, userId, campaignId, [...new Set(input.attachmentIds ?? [])]);
       for (let i = 0; i < jobs.length; i += INSERT_CHUNK) {
         await tx.emailJob.createMany({ data: jobs.slice(i, i + INSERT_CHUNK) });
       }
