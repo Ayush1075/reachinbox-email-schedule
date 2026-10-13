@@ -16,6 +16,8 @@ export function useSlackStatus() {
 
 /** Full-page navigation: the API redirects to Slack's consent screen. */
 export function startSlackInstall() {
+  // Absolute URL on the API origin (not a Next.js route), so a full navigation is correct here.
+  // eslint-disable-next-line @next/next/no-location-assign-relative-destination
   window.location.href = `${API_URL}/api/slack/install`;
 }
 
