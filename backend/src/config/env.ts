@@ -15,6 +15,10 @@ try {
   // No .env file: rely on the real environment (CI, containers, etc.).
 }
 
+// nodemailer.createTestAccount() caches one Ethereal account per process by
+// default; we want a fresh mailbox each time a sender is provisioned.
+process.env.ETHEREAL_CACHE ??= 'no';
+
 const int = (def: number) => z.coerce.number().int().nonnegative().default(def);
 const positiveInt = (def: number) => z.coerce.number().int().positive().default(def);
 const emptyToUndefined = (v: unknown) => (v === '' ? undefined : v);

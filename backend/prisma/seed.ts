@@ -28,12 +28,13 @@ async function main() {
     create: { email, googleId: `pending:${email}`, name: email.split('@')[0] ?? email },
   });
 
+  const existing = await prisma.sender.count({ where: { userId: user.id } });
   for (let i = 0; i < count; i++) {
     const account = await nodemailer.createTestAccount();
     const sender = await prisma.sender.create({
       data: {
         userId: user.id,
-        label: `Ethereal ${i + 1}`,
+        label: `Ethereal ${existing + i + 1}`,
         smtpHost: account.smtp.host,
         smtpPort: account.smtp.port,
         smtpSecure: account.smtp.secure,
