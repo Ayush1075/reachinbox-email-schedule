@@ -12,7 +12,7 @@ import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/legacy-ui/Button';
 import { Tabs } from '@/components/legacy-ui/Tabs';
 import { useMe } from '@/hooks/useAuth';
-import { useEmails } from '@/hooks/useEmails';
+import { useScheduledEmails, useSentEmails } from '@/hooks/useEmails';
 import { ApiError } from '@/lib/api';
 import { DashboardSkeleton } from './DashboardSkeleton';
 
@@ -61,8 +61,8 @@ export function Dashboard() {
   }, [me.error, router]);
 
   // Tab counts (page 1 queries are shared with the tables, so no extra requests).
-  const scheduledCount = useEmails('scheduled', 1).data?.total;
-  const sentCount = useEmails('sent', 1).data?.total;
+  const scheduledCount = useScheduledEmails({ page: 1, limit: 20, status: [] }).data?.total;
+  const sentCount = useSentEmails({ page: 1, limit: 20, status: [] }).data?.total;
 
   if (!me.data) {
     if (me.error && !(me.error instanceof ApiError && me.error.status === 401)) throw me.error;

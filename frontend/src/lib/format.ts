@@ -1,17 +1,19 @@
-const dateTime = new Intl.DateTimeFormat(undefined, {
-  month: 'short',
-  day: 'numeric',
-  hour: 'numeric',
-  minute: '2-digit',
-});
-const timeOnly = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
+import { differenceInMilliseconds, format, isSameYear, isToday } from 'date-fns';
 
-export function formatDateTime(iso: string | Date): string {
-  return dateTime.format(new Date(iso));
+type DateInput = string | number | Date;
+
+const numberFormat = new Intl.NumberFormat();
+
+/** "Oct 14, 4:05 PM" — the year only appears when it isn't the current one. */
+export function formatDateTime(value: DateInput): string {
+  const d = new Date(value);
+  return format(d, isSameYear(d, new Date()) ? 'MMM d, h:mm a' : 'MMM d, yyyy, h:mm a');
 }
 
-export function formatTime(iso: string | Date): string {
-  return timeOnly.format(new Date(iso));
+/** "4:05 PM" today, otherwise "Oct 14, 4:05 PM". */
+export function formatTime(value: DateInput): string {
+  const d = new Date(value);
+  return isToday(d) ? format(d, 'h:mm a') : formatDateTime(d);
 }
 
 /** Compact duration: 45s, 12m, 3h 5m, 2d 4h. */
@@ -27,14 +29,27 @@ export function formatDuration(ms: number): string {
 }
 
 /** "in 12m" / "3m ago" / "now". */
-export function formatRelative(iso: string | Date, now = Date.now()): string {
-  const diff = new Date(iso).getTime() - now;
+export function formatRelative(value: DateInput, now: number = Date.now()): string {
+  const diff = differenceInMilliseconds(new Date(value), now);
   if (Math.abs(diff) < 5_000) return 'now';
   return diff > 0 ? `in ${formatDuration(diff)}` : `${formatDuration(-diff)} ago`;
 }
 
-/** Value for <input type="datetime-local"> in the browser's local time zone. */
+export function formatNumber(n: number): string {
+  return numberFormat.format(n);
+}
+
+/** "1 email", "1,248 emails". */
+export function pluralize(count: number, singular: string, plural = `${singular}s`): string {
+  return `${formatNumber(count)} ${count === 1 ? singular : plural}`;
+}
+
+/** Local value for <input type="datetime-local">. */
 export function toDateTimeLocal(date: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return format(date, "yyyy-MM-dd'T'HH:mm");
+}
+
+/** Local "HH:mm" for an <input type="time">. */
+export function toTimeInput(date: Date): string {
+  return format(date, 'HH:mm');
 }

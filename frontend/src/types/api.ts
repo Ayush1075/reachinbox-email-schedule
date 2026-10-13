@@ -49,7 +49,52 @@ export type Email = {
   sender: { id: string; label: string; fromAddress: string };
 };
 
+export type CreateSenderInput = {
+  label: string;
+  smtpHost: string;
+  smtpPort: number;
+  smtpSecure: boolean;
+  smtpUser: string;
+  smtpPass: string;
+  fromAddress: string;
+  hourlyLimit: number | null;
+};
+
+export type UpdateSenderInput = Partial<Pick<Sender, 'label' | 'hourlyLimit' | 'isActive'>>;
+
+export type SmtpCredentials = Pick<CreateSenderInput, 'smtpHost' | 'smtpPort' | 'smtpSecure' | 'smtpUser' | 'smtpPass'>;
+
+export type SmtpCheck = { ok: true; latencyMs: number } | { ok: false; latencyMs: number; error: string };
+
 export type SenderQuota = { senderId: string; label: string; fromAddress: string; used: number; limit: number };
+
+/** GET /api/senders/quotas — current UTC hour window, straight from the limiter's Redis counters. */
+export type SenderQuotas = {
+  windowStart: string;
+  windowEnd: string;
+  senders: (SenderQuota & { isActive: boolean; deferred: number })[];
+};
+
+export type EmailListKind = 'scheduled' | 'sent';
+export type EmailSortField = 'recipient' | 'subject' | 'scheduledAt' | 'sentAt' | 'status' | 'updatedAt';
+
+export type EmailListParams = {
+  page: number;
+  limit: number;
+  status: EmailStatus[];
+  sort?: { field: EmailSortField; order: 'asc' | 'desc' };
+};
+
+export type Throughput = { bucketMs: number; buckets: { bucketStart: string; sent: number }[] };
+
+export type RecentEmail = Email & { updatedAt: string };
+
+export type ServerConfig = {
+  minDelayBetweenEmailsMs: number;
+  defaultHourlyLimit: number;
+  maxRecipients: number;
+  bullBoardPath: string;
+};
 
 export type Stats = {
   scheduled: number;

@@ -2,13 +2,12 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, API_URL } from '@/lib/api';
+import { queryKeys } from '@/lib/query-keys';
 import type { SlackStatus } from '@/types/api';
-
-const slackKey = ['slack'] as const;
 
 export function useSlackStatus() {
   return useQuery({
-    queryKey: slackKey,
+    queryKey: queryKeys.slack,
     queryFn: ({ signal }) => api<SlackStatus>('/api/slack/status', { signal }),
     staleTime: 30_000,
   });
@@ -25,7 +24,7 @@ export function useDisconnectSlack() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => api('/api/slack/disconnect', { method: 'POST' }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: slackKey }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.slack }),
   });
 }
 

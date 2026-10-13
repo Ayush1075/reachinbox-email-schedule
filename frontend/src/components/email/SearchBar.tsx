@@ -7,7 +7,9 @@ import { EmptyState } from '@/components/legacy-ui/EmptyState';
 import { Input, Select } from '@/components/legacy-ui/Field';
 import { Pagination } from '@/components/legacy-ui/Pagination';
 import { useDebounce } from '@/hooks/useDebounce';
-import { PAGE_SIZE, useEmailSearch } from '@/hooks/useEmails';
+import { useEmailSearch } from '@/hooks/useEmails';
+
+const PAGE_SIZE = 20;
 import type { EmailStatus } from '@/types/api';
 import { useSearchColumns } from './EmailTables';
 
@@ -71,7 +73,7 @@ export function SearchResults({ search }: { search: SearchState }) {
   const page = paging.queryKey === queryKey ? paging.page : 1;
   const setPage = (p: number) => setPaging({ queryKey, page: p });
 
-  const { data, isPending } = useEmailSearch({ q: debouncedQ, status: search.status, page }, true);
+  const { data, isPending } = useEmailSearch({ q: debouncedQ, status: search.status, page, limit: PAGE_SIZE });
   const columns = useSearchColumns();
 
   return (

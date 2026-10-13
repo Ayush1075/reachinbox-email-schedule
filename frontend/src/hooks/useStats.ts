@@ -2,12 +2,13 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { queryKeys } from '@/lib/query-keys';
 import type { Stats } from '@/types/api';
 import { POLL_MS } from './useEmails';
 
 export function useStats() {
   return useQuery({
-    queryKey: ['stats'],
+    queryKey: queryKeys.stats,
     queryFn: ({ signal }) => {
       // "Sent today" uses the viewer's local midnight, not UTC.
       const since = new Date();

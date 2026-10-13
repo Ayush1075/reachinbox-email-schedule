@@ -8,7 +8,9 @@ import { Button } from '@/components/legacy-ui/Button';
 import { type Column, DataTable } from '@/components/legacy-ui/DataTable';
 import { EmptyState } from '@/components/legacy-ui/EmptyState';
 import { Pagination } from '@/components/legacy-ui/Pagination';
-import { PAGE_SIZE, useCancelEmail, useEmails } from '@/hooks/useEmails';
+import { useCancelEmail, useScheduledEmails, useSentEmails } from '@/hooks/useEmails';
+
+const PAGE_SIZE = 20;
 import { errorMessage } from '@/lib/api';
 import { formatDateTime, formatRelative } from '@/lib/format';
 import type { Email, Paginated } from '@/types/api';
@@ -110,7 +112,7 @@ function TableShell({
 
 export function ScheduledTable({ onCompose }: { onCompose: () => void }) {
   const [page, setPage] = useState(1);
-  const { data, isPending } = useEmails('scheduled', page);
+  const { data, isPending } = useScheduledEmails({ page, limit: PAGE_SIZE, status: [] });
   const cancel = useCancelEmail();
   const now = useNow();
 
@@ -167,7 +169,7 @@ export function ScheduledTable({ onCompose }: { onCompose: () => void }) {
 
 export function SentTable() {
   const [page, setPage] = useState(1);
-  const { data, isPending } = useEmails('sent', page);
+  const { data, isPending } = useSentEmails({ page, limit: PAGE_SIZE, status: [] });
   const now = useNow();
 
   const columns: Column<Email>[] = [
