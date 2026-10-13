@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import { env } from './config/env';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { requestLogger } from './middleware/requestLogger';
+import { BULL_BOARD_PATH, createAdminRouter } from './routes/admin';
 import { healthRouter } from './routes/health';
 
 export function createApp() {
@@ -19,6 +20,7 @@ export function createApp() {
   app.use(cookieParser());
 
   app.use('/health', healthRouter);
+  app.use(BULL_BOARD_PATH, createAdminRouter());
 
   app.use(notFoundHandler);
   app.use(errorHandler);
