@@ -17,6 +17,10 @@ export default defineConfig({
       BULL_BOARD_PASSWORD: 'test-password',
       MAX_EMAILS_PER_HOUR: '200',
       MAX_EMAILS_PER_HOUR_PER_SENDER: '',
+      MIN_DELAY_BETWEEN_EMAILS_MS: '0',
+      // Isolated from the dev queue/index so tests never touch real data.
+      QUEUE_NAME: 'email-send-test',
+      ELASTICSEARCH_INDEX: 'emails-test',
     },
   },
 });
