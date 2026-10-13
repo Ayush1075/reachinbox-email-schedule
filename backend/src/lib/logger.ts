@@ -8,7 +8,8 @@ import { env } from '../config/env';
  */
 export const logger = pino({
   level: env.LOG_LEVEL,
-  base: { service: process.env.SERVICE_NAME ?? 'api' },
+  // Tag lines with the process role so interleaved API/worker logs stay readable.
+  base: { service: /worker\.(ts|js)$/.test(process.argv[1] ?? '') ? 'worker' : 'api' },
   redact: {
     paths: ['req.headers.authorization', 'req.headers.cookie', '*.smtpPass', '*.webhookUrl', '*.slackWebhookUrl'],
     censor: '[redacted]',
