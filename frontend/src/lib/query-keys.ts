@@ -1,6 +1,6 @@
-import type { EmailListKind, EmailListParams, EmailStatus } from '@/types/api';
+import type { EmailListKind, EmailListParams, EmailStatus, MailboxFilters } from '@/types/api';
 
-export type SearchQuery = { q: string; status: EmailStatus | ''; page: number; limit: number };
+export type SearchQuery = { q: string; status: EmailStatus[]; page: number; limit: number };
 
 /**
  * Every TanStack Query key in the app. Hierarchical, so invalidating a prefix
@@ -14,6 +14,8 @@ export const queryKeys = {
   emails: {
     all: ['emails'] as const,
     list: (kind: EmailListKind, params: EmailListParams) => ['emails', 'list', kind, params] as const,
+    mailbox: (kind: EmailListKind, filters: MailboxFilters) => ['emails', 'mailbox', kind, filters] as const,
+    detail: (id: string) => ['emails', 'detail', id] as const,
     search: (query: SearchQuery) => ['emails', 'search', query] as const,
     throughput: ['emails', 'throughput'] as const,
     recent: ['emails', 'recent'] as const,

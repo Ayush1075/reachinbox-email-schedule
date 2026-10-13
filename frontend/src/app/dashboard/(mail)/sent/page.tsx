@@ -1,9 +1,5 @@
-import { SentTable } from '@/components/email/EmailTables';
+import { MailboxView } from '@/components/email/MailboxView';
 
 export default function SentPage() {
-  return (
-    <div className="p-6">
-      <SentTable />
-    </div>
-  );
+  return <MailboxView kind="sent" />;
 }

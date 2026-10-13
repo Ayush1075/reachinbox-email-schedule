@@ -38,6 +38,8 @@ export type Email = {
   campaignId: string;
   recipient: string;
   subject: string;
+  /** One-line plain-text excerpt of the body. */
+  preview: string;
   status: EmailStatus;
   scheduledAt: string;
   sentAt: string | null;
@@ -46,7 +48,20 @@ export type Email = {
   previewUrl: string | null;
   messageId: string | null;
   lastError: string | null;
+  starred: boolean;
+  archived: boolean;
   sender: { id: string; label: string; fromAddress: string };
+};
+
+export type Attachment = { id: string; filename: string; contentType: string; size: number };
+
+/** GET /api/emails/:id — the reading view. `body` is sanitized HTML when `bodyIsHtml`. */
+export type EmailDetail = Email & {
+  body: string;
+  bodyIsHtml: boolean;
+  createdAt: string;
+  updatedAt: string;
+  attachments: Attachment[];
 };
 
 export type CreateSenderInput = {
@@ -83,7 +98,12 @@ export type EmailListParams = {
   limit: number;
   status: EmailStatus[];
   sort?: { field: EmailSortField; order: 'asc' | 'desc' };
+  starred?: boolean;
+  archived?: boolean;
 };
+
+/** Mailbox view state: search text plus the filter menu. */
+export type MailboxFilters = { q: string; status: EmailStatus[]; starred: boolean; archived: boolean };
 
 export type Throughput = { bucketMs: number; buckets: { bucketStart: string; sent: number }[] };
 
@@ -112,6 +132,8 @@ export type CreateCampaignInput = {
   delayBetweenMs: number;
   hourlyLimit?: number | null;
   senderIds: string[];
+  bodyFormat: 'text' | 'html';
+  attachmentIds: string[];
 };
 
 export type Campaign = {

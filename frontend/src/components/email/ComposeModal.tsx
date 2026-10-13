@@ -240,6 +240,8 @@ export function ComposeModal({ open, onClose }: { open: boolean; onClose: () => 
         delayBetweenMs: delayMs,
         hourlyLimit: limitNum,
         senderIds: chosen.map((s) => s.id),
+        bodyFormat: 'text',
+        attachmentIds: [],
       },
       {
         onSuccess: (res) => {

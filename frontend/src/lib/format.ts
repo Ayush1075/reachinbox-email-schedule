@@ -1,4 +1,4 @@
-import { differenceInMilliseconds, format, isSameYear, isToday } from 'date-fns';
+import { differenceInCalendarDays, differenceInMilliseconds, format, isSameYear, isToday } from 'date-fns';
 
 type DateInput = string | number | Date;
 
@@ -8,6 +8,13 @@ const numberFormat = new Intl.NumberFormat();
 export function formatDateTime(value: DateInput): string {
   const d = new Date(value);
   return format(d, isSameYear(d, new Date()) ? 'MMM d, h:mm a' : 'MMM d, yyyy, h:mm a');
+}
+
+/** Mailbox pill time: "Tue 9:15:12 AM" within a week either side, otherwise "Oct 21, 9:15 AM". */
+export function formatPillTime(value: DateInput, now: number = Date.now()): string {
+  const d = new Date(value);
+  if (Math.abs(differenceInCalendarDays(d, now)) < 7) return format(d, 'EEE h:mm:ss a');
+  return format(d, isSameYear(d, now) ? 'MMM d, h:mm a' : 'MMM d, yyyy');
 }
 
 /** "4:05 PM" today, otherwise "Oct 14, 4:05 PM". */
@@ -52,4 +59,11 @@ export function toDateTimeLocal(date: Date): string {
 /** Local "HH:mm" for an <input type="time">. */
 export function toTimeInput(date: Date): string {
   return format(date, 'HH:mm');
+}
+
+/** "1.2 MB", "340 KB". */
+export function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
