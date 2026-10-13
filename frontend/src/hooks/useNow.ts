@@ -1,13 +1,37 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 
-/** Current time, refreshed periodically so relative labels ("in 12m") stay accurate between polls. */
-export function useNow(intervalMs = 15_000): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), intervalMs);
-    return () => clearInterval(t);
-  }, [intervalMs]);
+const TICK_MS = 15_000;
+const listeners = new Set<() => void>();
+let now = 0;
+let timer: ReturnType<typeof setInterval> | undefined;
+
+function subscribe(onChange: () => void) {
+  listeners.add(onChange);
+  timer ??= setInterval(() => {
+    now = Date.now();
+    listeners.forEach((l) => l());
+  }, TICK_MS);
+  return () => {
+    listeners.delete(onChange);
+    if (listeners.size === 0) {
+      clearInterval(timer);
+      timer = undefined;
+      now = 0;
+    }
+  };
+}
+
+function getSnapshot() {
+  if (now === 0) now = Date.now();
   return now;
+}
+
+/**
+ * Shared clock that ticks every 15s so relative labels ("in 12m") stay
+ * accurate between polls. Reads 0 during prerender, where no rows exist yet.
+ */
+export function useNow(): number {
+  return useSyncExternalStore(subscribe, getSnapshot, () => 0);
 }

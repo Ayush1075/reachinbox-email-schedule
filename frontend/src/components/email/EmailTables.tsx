@@ -1,7 +1,7 @@
 'use client';
 
 import { ArrowUpRight, Inbox, Send, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import { StatusBadge } from '@/components/legacy-ui/Badge';
 import { Button } from '@/components/legacy-ui/Button';
@@ -11,19 +11,10 @@ import { Pagination } from '@/components/legacy-ui/Pagination';
 import { useCancelEmail, useScheduledEmails, useSentEmails } from '@/hooks/useEmails';
 
 const PAGE_SIZE = 20;
+import { useNow } from '@/hooks/useNow';
 import { errorMessage } from '@/lib/api';
 import { formatDateTime, formatRelative } from '@/lib/format';
 import type { Email, Paginated } from '@/types/api';
-
-/** Re-render periodically so "in 12m" stays accurate between polls. */
-function useNow(intervalMs = 15_000) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), intervalMs);
-    return () => clearInterval(t);
-  }, [intervalMs]);
-  return now;
-}
 
 function TimeCell({ iso, now }: { iso: string | null; now: number }) {
   if (!iso) return <span className="text-fg-muted">—</span>;

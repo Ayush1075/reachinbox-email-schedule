@@ -1,85 +1,82 @@
 'use client';
 
-import { ChevronDown, LogOut } from 'lucide-react';
+import { LogOut, Settings } from 'lucide-react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useLogout } from '@/hooks/useAuth';
 import { errorMessage } from '@/lib/api';
 import type { User } from '@/types/api';
 
-function Avatar({ user }: { user: User }) {
-  const initials = user.name
+export function initials(name: string): string {
+  return name
     .split(/\s+/)
+    .filter(Boolean)
     .map((p) => p[0])
     .slice(0, 2)
     .join('')
     .toUpperCase();
-  return user.avatarUrl ? (
-    // eslint-disable-next-line @next/next/no-img-element -- remote Google avatar, tiny, no optimisation needed
-    <img src={user.avatarUrl} alt="" referrerPolicy="no-referrer" className="size-7 rounded-full border border-border object-cover" />
-  ) : (
-    <span className="flex size-7 items-center justify-center rounded-full bg-stone-200 text-[11px] font-semibold text-fg-muted">{initials}</span>
+}
+
+export function UserAvatar({ user, className }: { user: User; className?: string }) {
+  return (
+    <Avatar className={className}>
+      {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt="" referrerPolicy="no-referrer" />}
+      <AvatarFallback className="text-xs font-medium">{initials(user.name)}</AvatarFallback>
+    </Avatar>
   );
 }
 
-export function UserMenu({ user }: { user: User }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+export function useSignOut() {
   const router = useRouter();
   const logout = useLogout();
+  const signOut = () =>
+    logout.mutate(undefined, {
+      onSuccess: () => router.replace('/'),
+      onError: (err) => toast.error(errorMessage(err)),
+    });
+  return { signOut, isPending: logout.isPending };
+}
 
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDown);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
+export function UserMenu({ user }: { user: User }) {
+  const { signOut, isPending } = useSignOut();
 
   return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        className="flex items-center gap-2 rounded-[6px] py-1 pr-1.5 pl-1 transition-colors duration-150 hover:bg-bg"
-      >
-        <Avatar user={user} />
-        <span className="hidden max-w-36 truncate text-sm font-medium md:block">{user.name}</span>
-        <ChevronDown className="size-3.5 text-fg-muted" aria-hidden />
-      </button>
-
-      {open && (
-        <div role="menu" className="absolute right-0 z-40 mt-1.5 w-64 rounded-[8px] border border-border bg-surface py-1 shadow-[0_8px_30px_rgb(28_25_23/0.08)]">
-          <div className="border-b border-border px-3 py-2.5">
-            <p className="truncate text-sm font-medium">{user.name}</p>
-            <p className="truncate font-mono text-[12px] text-fg-muted">{user.email}</p>
-          </div>
-          <button
-            role="menuitem"
-            type="button"
-            disabled={logout.isPending}
-            onClick={() =>
-              logout.mutate(undefined, {
-                onSuccess: () => router.replace('/'),
-                onError: (err) => toast.error(errorMessage(err)),
-              })
-            }
-            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-fg transition-colors duration-150 hover:bg-bg disabled:opacity-50"
-          >
-            <LogOut className="size-4 text-fg-muted" aria-hidden />
-            Log out
-          </button>
-        </div>
-      )}
-    </div>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="h-9 gap-2 px-1.5" aria-label={`Account menu for ${user.name}`}>
+          <UserAvatar user={user} className="size-7" />
+          <span className="hidden max-w-36 truncate text-sm font-medium lg:block">{user.name}</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-64">
+        <DropdownMenuLabel className="flex flex-col gap-0.5 font-normal">
+          <span className="truncate text-sm font-medium text-foreground">{user.name}</span>
+          <span className="truncate font-mono text-xs text-muted-foreground">{user.email}</span>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href="/dashboard/settings">
+            <Settings aria-hidden />
+            Settings
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem disabled={isPending} onSelect={signOut}>
+          <LogOut aria-hidden />
+          Log out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
