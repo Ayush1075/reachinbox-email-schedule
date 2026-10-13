@@ -32,7 +32,7 @@ function getQueryClient() {
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
       <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? ''}>
         <QueryClientProvider client={getQueryClient()}>
           <TooltipProvider delayDuration={300}>{children}</TooltipProvider>

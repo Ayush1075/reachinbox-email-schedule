@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { isActive, navItems } from './nav';
-import { ProductMark } from './ProductMark';
+import { OnbLogo } from './OnbLogo';
 import { SlackStatusPill } from './SlackStatusPill';
 import { ThemeToggle } from './ThemeToggle';
 
@@ -55,11 +55,10 @@ export function SidebarBody({ rail = false, onNavigate }: { rail?: boolean; onNa
         <Link
           href="/dashboard"
           onClick={onNavigate}
-          aria-label="ReachInbox overview"
+          aria-label="ONB home"
           className="flex items-center gap-2.5 rounded-md focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
         >
-          <ProductMark />
-          {!rail && <span className="text-[15px] font-semibold tracking-tight">ReachInbox</span>}
+          <OnbLogo className={rail ? 'h-4' : undefined} />
         </Link>
       </div>
       <div className="flex-1 overflow-y-auto px-3 py-3">

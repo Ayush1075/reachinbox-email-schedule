@@ -5,59 +5,68 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Design tokens. Semantic names only; components never reference raw colours
- * except for the soft status tints in StatusBadge. Every token has a dark
- * counterpart under `.dark` (toggled by next-themes).
+ * Design tokens, taken from the Figma: white surfaces, grey filled inputs and
+ * a single green accent. Components use these semantic names; the only raw
+ * colours are the status tints in StatusPill. Every token has a dark
+ * counterpart under .dark (toggled by next-themes; light is the default).
  */
 :root {
-  --background: hsl(0 0% 100%);
-  --foreground: hsl(240 10% 4%);
-  --card: hsl(0 0% 100%);
-  --card-foreground: hsl(240 10% 4%);
-  --popover: hsl(0 0% 100%);
-  --popover-foreground: hsl(240 10% 4%);
-  --primary: hsl(243 75% 59%);
-  --primary-foreground: hsl(0 0% 100%);
-  --secondary: hsl(240 5% 96%);
-  --secondary-foreground: hsl(240 6% 10%);
-  --muted: hsl(240 5% 96%);
-  --muted-foreground: hsl(240 4% 46%);
-  --accent: hsl(240 5% 96%);
-  --accent-foreground: hsl(240 6% 10%);
-  --destructive: hsl(0 72% 51%);
-  --destructive-foreground: hsl(0 0% 100%);
-  --success: hsl(160 84% 39%);
-  --warning: hsl(38 92% 50%);
-  --border: hsl(240 6% 90%);
-  --input: hsl(240 6% 90%);
-  --ring: hsl(243 75% 59%);
-  --chart-1: hsl(243 75% 59%);
-  --radius: 0.625rem;
+  --background: #ffffff;
+  --foreground: #171717;
+  --card: #ffffff;
+  --card-foreground: #171717;
+  --popover: #ffffff;
+  --popover-foreground: #171717;
+  --primary: #00a63e;
+  --primary-foreground: #ffffff;
+  /* Pale green behind the active nav item, the Google button and recipient chips. */
+  --primary-soft: #e6f4ec;
+  --primary-soft-foreground: #0f5f2e;
+  --secondary: #f3f4f6;
+  --secondary-foreground: #171717;
+  --muted: #f3f4f6;
+  --muted-foreground: #71717a;
+  --accent: #f4f4f5;
+  --accent-foreground: #171717;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --success: #00a63e;
+  --warning: #d97706;
+  --border: #e5e7eb;
+  --input: #e5e7eb;
+  /* Filled inputs (search, email/password, the editor surface). */
+  --field: #f3f4f6;
+  --ring: #00a63e;
+  --chart-1: #00a63e;
+  --radius: 0.5rem;
 }
 
 .dark {
-  --background: hsl(240 10% 4%);
-  --foreground: hsl(0 0% 98%);
-  --card: hsl(240 7% 8%);
-  --card-foreground: hsl(0 0% 98%);
-  --popover: hsl(240 7% 8%);
-  --popover-foreground: hsl(0 0% 98%);
-  --primary: hsl(243 75% 65%);
-  --primary-foreground: hsl(240 10% 4%);
-  --secondary: hsl(240 5% 14%);
-  --secondary-foreground: hsl(0 0% 98%);
-  --muted: hsl(240 5% 14%);
-  --muted-foreground: hsl(240 5% 58%);
-  --accent: hsl(240 5% 14%);
-  --accent-foreground: hsl(0 0% 98%);
-  --destructive: hsl(0 63% 50%);
-  --destructive-foreground: hsl(0 0% 98%);
-  --success: hsl(160 70% 45%);
-  --warning: hsl(38 85% 55%);
-  --border: hsl(240 5% 16%);
-  --input: hsl(240 5% 16%);
-  --ring: hsl(243 75% 65%);
-  --chart-1: hsl(243 75% 65%);
+  --background: #0f0f11;
+  --foreground: #f4f4f5;
+  --card: #17171a;
+  --card-foreground: #f4f4f5;
+  --popover: #17171a;
+  --popover-foreground: #f4f4f5;
+  --primary: #22c55e;
+  --primary-foreground: #052e13;
+  --primary-soft: #12291b;
+  --primary-soft-foreground: #86efac;
+  --secondary: #222226;
+  --secondary-foreground: #f4f4f5;
+  --muted: #222226;
+  --muted-foreground: #a1a1aa;
+  --accent: #222226;
+  --accent-foreground: #f4f4f5;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --border: #27272a;
+  --input: #27272a;
+  --field: #1d1d21;
+  --ring: #22c55e;
+  --chart-1: #22c55e;
 }
 
 @theme inline {
@@ -69,6 +78,9 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-soft-foreground: var(--primary-soft-foreground);
+  --color-field: var(--field);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
