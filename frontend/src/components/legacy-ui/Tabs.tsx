@@ -42,7 +42,7 @@ export function Tabs<K extends string>({
             onClick={() => onChange(t.key)}
             className={cn(
               '-mb-px flex h-10 items-center gap-2 border-b-2 text-sm font-medium transition-colors duration-150',
-              active ? 'border-accent text-fg' : 'border-transparent text-fg-muted hover:text-fg',
+              active ? 'border-primary text-fg' : 'border-transparent text-fg-muted hover:text-fg',
             )}
           >
             {t.label}
@@ -50,7 +50,7 @@ export function Tabs<K extends string>({
               <span
                 className={cn(
                   'rounded-full px-1.5 py-px font-mono text-[11px] tabular-nums',
-                  active ? 'bg-accent/10 text-accent' : 'bg-stone-100 text-fg-muted',
+                  active ? 'bg-primary/10 text-primary' : 'bg-stone-100 text-fg-muted',
                 )}
               >
                 {t.count.toLocaleString()}

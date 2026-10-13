@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Skeleton } from '@/components/ui/Skeleton';
+import { Skeleton } from '@/components/legacy-ui/Skeleton';
 import { useCountUp } from '@/hooks/useCountUp';
 import { useStats } from '@/hooks/useStats';
 import { cn } from '@/lib/cn';
@@ -31,7 +31,7 @@ function QuotaCard({ stats }: { stats: Stats | undefined }) {
   const used = useCountUp(stats?.currentHour.used);
   const limit = stats?.currentHour.limit ?? 0;
   const pct = limit > 0 && used !== undefined ? Math.min(100, (used / limit) * 100) : 0;
-  const tone = pct >= 100 ? 'bg-danger' : pct >= 80 ? 'bg-warning' : 'bg-accent';
+  const tone = pct >= 100 ? 'bg-danger' : pct >= 80 ? 'bg-warning' : 'bg-primary';
 
   return (
     <Card label="Current hour usage">

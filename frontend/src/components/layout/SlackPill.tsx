@@ -2,7 +2,7 @@
 
 import { Hash, Loader2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import { startSlackInstall, useDisconnectSlack, useSlackStatus, useSlackTest } from '@/hooks/useSlackStatus';
 import { errorMessage } from '@/lib/api';
 import { cn } from '@/lib/cn';

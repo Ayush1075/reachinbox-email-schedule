@@ -3,7 +3,7 @@
 import { ChevronDown, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import { useLogout } from '@/hooks/useAuth';
 import { errorMessage } from '@/lib/api';
 import type { User } from '@/types/api';

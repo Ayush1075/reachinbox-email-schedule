@@ -4,8 +4,8 @@ import { GoogleLogin } from '@react-oauth/google';
 import { CalendarClock, Gauge, ShieldCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import toast from 'react-hot-toast';
-import { Skeleton } from '@/components/ui/Skeleton';
+import { toast } from 'sonner';
+import { Skeleton } from '@/components/legacy-ui/Skeleton';
 import { useGoogleLogin, useMe } from '@/hooks/useAuth';
 import { errorMessage } from '@/lib/api';
 
@@ -30,7 +30,7 @@ export default function LoginPage() {
       <div className="w-full max-w-[400px]">
         <div className="rounded-[8px] border border-border bg-surface p-8 shadow-[var(--shadow-card)]">
           <div className="mb-6 flex items-center gap-2.5">
-            <div className="flex size-8 items-center justify-center rounded-[6px] bg-accent font-mono text-sm font-semibold text-white">R</div>
+            <div className="flex size-8 items-center justify-center rounded-[6px] bg-primary font-mono text-sm font-semibold text-white">R</div>
             <span className="text-base font-semibold">ReachInbox Scheduler</span>
           </div>
 

@@ -2,11 +2,11 @@
 
 import { CheckCircle2, Clock, FileText, Plus, Upload, X } from 'lucide-react';
 import { type DragEvent, type FormEvent, useId, useMemo, useRef, useState } from 'react';
-import toast from 'react-hot-toast';
-import { Button } from '@/components/ui/Button';
-import { Field, Input, Textarea } from '@/components/ui/Field';
-import { Modal } from '@/components/ui/Modal';
-import { Skeleton } from '@/components/ui/Skeleton';
+import { toast } from 'sonner';
+import { Button } from '@/components/legacy-ui/Button';
+import { Field, Input, Textarea } from '@/components/legacy-ui/Field';
+import { Modal } from '@/components/legacy-ui/Modal';
+import { Skeleton } from '@/components/legacy-ui/Skeleton';
 import { useCreateCampaign } from '@/hooks/useCampaigns';
 import { useCreateEtherealSender, useSenders, useServerConfig } from '@/hooks/useSenders';
 import { ApiError, errorMessage } from '@/lib/api';
@@ -120,13 +120,13 @@ function RecipientsDrop({
       onDrop={onDrop}
       className={cn(
         'flex flex-col items-center justify-center rounded-[8px] border border-dashed px-4 py-7 text-center transition-colors duration-150',
-        dragging ? 'border-accent bg-accent/5' : invalid ? 'border-danger/60' : 'border-stone-300 hover:border-stone-400',
+        dragging ? 'border-primary bg-primary/5' : invalid ? 'border-danger/60' : 'border-stone-300 hover:border-stone-400',
       )}
     >
       <Upload className="size-5 text-fg-muted" aria-hidden />
       <p className="mt-2 text-sm">
         Drop a <span className="font-mono">.csv</span> or <span className="font-mono">.txt</span> file, or{' '}
-        <button type="button" onClick={() => inputRef.current?.click()} className="font-medium text-accent hover:text-accent-hover">
+        <button type="button" onClick={() => inputRef.current?.click()} className="font-medium text-primary hover:text-primary/90">
           browse
         </button>
       </p>
@@ -385,7 +385,7 @@ export function ComposeModal({ open, onClose }: { open: boolean; onClose: () => 
                     onError: (err) => toast.error(errorMessage(err)),
                   })
                 }
-                className="inline-flex items-center gap-1 text-[12px] font-medium text-accent hover:text-accent-hover disabled:opacity-50"
+                className="inline-flex items-center gap-1 text-[12px] font-medium text-primary hover:text-primary/90 disabled:opacity-50"
               >
                 <Plus className="size-3.5" aria-hidden />
                 {createSender.isPending ? 'Creating…' : 'Add Ethereal sender'}
@@ -421,14 +421,14 @@ export function ComposeModal({ open, onClose }: { open: boolean; onClose: () => 
                     key={s.id}
                     className={cn(
                       'flex cursor-pointer items-start gap-3 rounded-[8px] border p-3 transition-colors duration-150',
-                      checked ? 'border-accent/50 bg-accent/[0.03]' : 'border-border hover:border-stone-300',
+                      checked ? 'border-primary/50 bg-primary/[0.03]' : 'border-border hover:border-stone-300',
                     )}
                   >
                     <input
                       type="checkbox"
                       checked={checked}
                       onChange={() => setSelected(checked ? senderIds.filter((x) => x !== s.id) : [...senderIds, s.id])}
-                      className="mt-0.5 size-4 accent-[var(--accent)]"
+                      className="mt-0.5 size-4 accent-[var(--primary)]"
                     />
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center justify-between gap-2">
@@ -447,7 +447,7 @@ export function ComposeModal({ open, onClose }: { open: boolean; onClose: () => 
         <div aria-live="polite" className="rounded-[8px] border border-border bg-bg/60 px-4 py-3">
           {preview && parsed ? (
             <div className="flex items-start gap-2.5">
-              <Clock className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden />
+              <Clock className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
               <div className="text-sm">
                 <p>
                   <span className="font-mono tabular-nums">{parsed.valid.length.toLocaleString()}</span> emails ·{' '}

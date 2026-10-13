@@ -2,7 +2,7 @@
 
 import { AlertTriangle } from 'lucide-react';
 import { useEffect } from 'react';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/legacy-ui/Button';
 
 /** Route error boundary for the dashboard (Next 16: `retry` re-fetches and re-renders the segment). */
 export default function DashboardError({ error, retry }: { error: Error & { digest?: string }; retry: () => void }) {

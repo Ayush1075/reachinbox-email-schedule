@@ -3,14 +3,14 @@
 import { PenSquare } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import { StatCards } from '@/components/dashboard/StatCards';
 import { ComposeModal } from '@/components/email/ComposeModal';
 import { ScheduledTable, SentTable } from '@/components/email/EmailTables';
 import { SearchBar, SearchResults, type SearchState } from '@/components/email/SearchBar';
 import { Header } from '@/components/layout/Header';
-import { Button } from '@/components/ui/Button';
-import { Tabs } from '@/components/ui/Tabs';
+import { Button } from '@/components/legacy-ui/Button';
+import { Tabs } from '@/components/legacy-ui/Tabs';
 import { useMe } from '@/hooks/useAuth';
 import { useEmails } from '@/hooks/useEmails';
 import { ApiError } from '@/lib/api';

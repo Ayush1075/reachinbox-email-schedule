@@ -2,12 +2,12 @@
 
 import { ArrowUpRight, Inbox, Send, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import toast from 'react-hot-toast';
-import { StatusBadge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
-import { type Column, DataTable } from '@/components/ui/DataTable';
-import { EmptyState } from '@/components/ui/EmptyState';
-import { Pagination } from '@/components/ui/Pagination';
+import { toast } from 'sonner';
+import { StatusBadge } from '@/components/legacy-ui/Badge';
+import { Button } from '@/components/legacy-ui/Button';
+import { type Column, DataTable } from '@/components/legacy-ui/DataTable';
+import { EmptyState } from '@/components/legacy-ui/EmptyState';
+import { Pagination } from '@/components/legacy-ui/Pagination';
 import { PAGE_SIZE, useCancelEmail, useEmails } from '@/hooks/useEmails';
 import { errorMessage } from '@/lib/api';
 import { formatDateTime, formatRelative } from '@/lib/format';
@@ -199,7 +199,7 @@ export function PreviewLink({ email }: { email: Email }) {
         href={email.previewUrl}
         target="_blank"
         rel="noreferrer"
-        className="inline-flex items-center gap-1 text-[13px] font-medium text-accent transition-colors duration-150 hover:text-accent-hover"
+        className="inline-flex items-center gap-1 text-[13px] font-medium text-primary transition-colors duration-150 hover:text-primary/90"
       >
         View
         <ArrowUpRight className="size-3.5" aria-hidden />

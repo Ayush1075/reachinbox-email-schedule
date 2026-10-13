@@ -3,7 +3,7 @@
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
-import { Toaster } from 'react-hot-toast';
+import { Toaster } from '@/components/ui/sonner';
 import { ApiError } from '@/lib/api';
 
 let browserQueryClient: QueryClient | undefined;
@@ -33,19 +33,7 @@ export function Providers({ children }: { children: ReactNode }) {
     <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? ''}>
       <QueryClientProvider client={getQueryClient()}>
         {children}
-        <Toaster
-          position="bottom-right"
-          toastOptions={{
-            duration: 4000,
-            style: {
-              fontSize: '14px',
-              borderRadius: '8px',
-              border: '1px solid var(--border)',
-              boxShadow: '0 1px 2px 0 rgb(28 25 23 / 0.04)',
-              color: 'var(--text-primary)',
-            },
-          }}
-        />
+        <Toaster position="bottom-right" />
       </QueryClientProvider>
     </GoogleOAuthProvider>
   );

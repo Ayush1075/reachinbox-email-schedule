@@ -2,10 +2,10 @@
 
 import { Search, X } from 'lucide-react';
 import { useState } from 'react';
-import { DataTable } from '@/components/ui/DataTable';
-import { EmptyState } from '@/components/ui/EmptyState';
-import { Input, Select } from '@/components/ui/Field';
-import { Pagination } from '@/components/ui/Pagination';
+import { DataTable } from '@/components/legacy-ui/DataTable';
+import { EmptyState } from '@/components/legacy-ui/EmptyState';
+import { Input, Select } from '@/components/legacy-ui/Field';
+import { Pagination } from '@/components/legacy-ui/Pagination';
 import { useDebounce } from '@/hooks/useDebounce';
 import { PAGE_SIZE, useEmailSearch } from '@/hooks/useEmails';
 import type { EmailStatus } from '@/types/api';

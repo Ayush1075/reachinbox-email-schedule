@@ -2,7 +2,7 @@ import type { InputHTMLAttributes, ReactNode, Ref, SelectHTMLAttributes, Textare
 import { cn } from '@/lib/cn';
 
 const control =
-  'w-full rounded-[8px] border border-border bg-surface px-3 text-sm text-fg placeholder:text-fg-muted/70 transition-colors duration-150 hover:border-stone-300 focus:border-accent focus:outline-none focus-visible:outline-none focus:ring-2 focus:ring-accent/15 disabled:bg-bg disabled:text-fg-muted aria-invalid:border-danger aria-invalid:focus:ring-danger/15';
+  'w-full rounded-[8px] border border-border bg-surface px-3 text-sm text-fg placeholder:text-fg-muted/70 transition-colors duration-150 hover:border-stone-300 focus:border-primary focus:outline-none focus-visible:outline-none focus:ring-2 focus:ring-primary/15 disabled:bg-bg disabled:text-fg-muted aria-invalid:border-danger aria-invalid:focus:ring-danger/15';
 
 export function Input({ className, ref, ...props }: InputHTMLAttributes<HTMLInputElement> & { ref?: Ref<HTMLInputElement> }) {
   return <input ref={ref} className={cn(control, 'h-9', className)} {...props} />;
