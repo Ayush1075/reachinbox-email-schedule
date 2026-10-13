@@ -2,6 +2,7 @@ import { ExternalLink } from 'lucide-react';
 import { API_URL } from '@/lib/api';
 import type { User } from '@/types/api';
 import { SlackPill } from './SlackPill';
+import { ThemeToggle } from './ThemeToggle';
 import { UserMenu } from './UserMenu';
 
 export function Header({ user }: { user: User }) {
@@ -23,6 +24,7 @@ export function Header({ user }: { user: User }) {
             <ExternalLink className="size-3.5" aria-hidden />
           </a>
           <SlackPill />
+          <ThemeToggle />
           <div className="mx-1 h-5 w-px bg-border" aria-hidden />
           <UserMenu user={user} />
         </nav>

@@ -7,14 +7,15 @@ const inter = Inter({ variable: '--font-inter', subsets: ['latin'] });
 const jetbrainsMono = JetBrains_Mono({ variable: '--font-jetbrains-mono', subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'ReachInbox Scheduler',
-  description: 'Schedule email campaigns with rate limiting and exactly-once delivery.',
+  title: { default: 'ReachInbox Scheduler', template: '%s · ReachInbox' },
+  description: 'Schedule email campaigns that send exactly once, on time, within per-sender hourly limits.',
 };
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
-    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}>
-      <body className="min-h-full bg-bg font-sans text-fg">
+    // next-themes sets the theme class on <html> before hydration.
+    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${jetbrainsMono.variable} h-full`}>
+      <body className="min-h-full">
         <Providers>{children}</Providers>
       </body>
     </html>
