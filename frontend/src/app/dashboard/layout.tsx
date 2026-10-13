@@ -1,5 +1,5 @@
-import { AppShell } from '@/components/layout/AppShell';
+import { AuthGate } from '@/components/layout/AuthGate';
 
 export default function DashboardLayout({ children }: LayoutProps<'/dashboard'>) {
-  return <AppShell>{children}</AppShell>;
+  return <AuthGate>{children}</AuthGate>;
 }

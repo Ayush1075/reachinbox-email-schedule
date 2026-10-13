@@ -9,7 +9,7 @@ import { buildInstallUrl, completeInstall, disconnectSlack, sendTestMessage } fr
 export const slackRouter = Router();
 
 const dashboardUrl = (params: Record<string, string>) =>
-  `${env.FRONTEND_URL}/dashboard?${new URLSearchParams(params).toString()}`;
+  `${env.FRONTEND_URL}/dashboard/settings?${new URLSearchParams(params).toString()}`;
 
 /** Browser navigation (not fetch): redirects to Slack's consent screen. */
 slackRouter.get('/install', requireAuth, (req, res) => {

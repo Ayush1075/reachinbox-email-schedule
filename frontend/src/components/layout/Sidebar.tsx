@@ -1,126 +1,108 @@
 'use client';
 
-import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
+import { useMailboxCounts } from '@/hooks/useEmails';
+import { formatNumber } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import { isActive, navItems } from './nav';
+import { AccountCard } from './AccountMenu';
+import { isActive, navSections } from './nav';
 import { OnbLogo } from './OnbLogo';
-import { SlackStatusPill } from './SlackStatusPill';
-import { ThemeToggle } from './ThemeToggle';
 
-/** Nav links. `rail` renders icons only, with labels in tooltips. */
-export function SidebarNav({ rail = false, onNavigate }: { rail?: boolean; onNavigate?: () => void }) {
+function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
-  return (
-    <nav aria-label="Main" className="flex flex-col gap-0.5">
-      {navItems.map(({ href, label, icon: Icon }) => {
-        const active = isActive(pathname, href);
-        const link = (
-          <Link
-            key={href}
-            href={href}
-            onClick={onNavigate}
-            aria-current={active ? 'page' : undefined}
-            aria-label={rail ? label : undefined}
-            className={cn(
-              'flex h-8 items-center gap-2.5 rounded-md px-2.5 text-sm font-medium transition-colors duration-150 ease-out focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none',
-              active ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
-              rail && 'w-8 justify-center px-0',
-            )}
-          >
-            <Icon className={cn('size-4 shrink-0', active && 'text-primary')} aria-hidden />
-            {!rail && label}
-          </Link>
-        );
-        if (!rail) return link;
-        return (
-          <Tooltip key={href}>
-            <TooltipTrigger asChild>{link}</TooltipTrigger>
-            <TooltipContent side="right">{label}</TooltipContent>
-          </Tooltip>
-        );
-      })}
-    </nav>
-  );
-}
+  const counts = useMailboxCounts();
 
-/** Full sidebar content, shared by the desktop sidebar and the mobile sheet. */
-export function SidebarBody({ rail = false, onNavigate }: { rail?: boolean; onNavigate?: () => void }) {
   return (
-    <>
-      <div className={cn('flex h-14 shrink-0 items-center', rail ? 'justify-center' : 'px-4')}>
-        <Link
-          href="/dashboard"
-          onClick={onNavigate}
-          aria-label="ONB home"
-          className="flex items-center gap-2.5 rounded-md focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
-        >
-          <OnbLogo className={rail ? 'h-4' : undefined} />
+    <div className="flex h-full flex-col px-2 pt-[19px] pb-4">
+      <Link
+        href="/dashboard/scheduled"
+        onClick={onNavigate}
+        className="ml-[11px] w-fit rounded-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+        aria-label="ONB, go to scheduled emails"
+      >
+        <OnbLogo />
+      </Link>
+
+      <div className="mt-[11px]">
+        <AccountCard />
+      </div>
+
+      <Button
+        asChild
+        variant="outline"
+        className="mt-2.5 h-[34px] w-full rounded-full border-primary bg-background text-sm font-normal text-primary shadow-none hover:bg-primary-soft hover:text-primary dark:border-primary dark:bg-background"
+      >
+        <Link href="/dashboard/compose" onClick={onNavigate}>
+          Compose
         </Link>
-      </div>
-      <div className="flex-1 overflow-y-auto px-3 py-3">
-        <SidebarNav rail={rail} onNavigate={onNavigate} />
-      </div>
-    </>
+      </Button>
+
+      <nav aria-label="Main" className="mt-6 flex flex-col gap-5">
+        {navSections.map((section) => (
+          <div key={section.title}>
+            <p className="mb-0.5 px-4 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">{section.title}</p>
+            <ul>
+              {section.items.map(({ href, label, icon: Icon, count }) => {
+                const active = isActive(pathname, href);
+                const total = count ? counts[count] : undefined;
+                return (
+                  <li key={href}>
+                    <Link
+                      href={href}
+                      onClick={onNavigate}
+                      aria-current={active ? 'page' : undefined}
+                      className={cn(
+                        'flex h-9 items-center gap-2.5 rounded-[10px] px-4 text-sm transition-colors duration-150 ease-out outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
+                        active ? 'bg-primary-soft font-semibold text-foreground' : 'text-foreground hover:bg-field',
+                      )}
+                    >
+                      <Icon className="size-4 shrink-0" aria-hidden />
+                      <span className="flex-1">{label}</span>
+                      {total !== undefined && (
+                        <span className="text-[13px] font-normal text-muted-foreground tabular-nums" aria-label={`${total} emails`}>
+                          {formatNumber(total)}
+                        </span>
+                      )}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
+      </nav>
+    </div>
   );
 }
 
-/**
- * Desktop sidebar: full width on xl, an icon rail between md and xl (or when
- * the user collapses it), and hidden below md where the topbar opens a sheet.
- */
-export function Sidebar({ collapsed, onToggleCollapsed }: { collapsed: boolean; onToggleCollapsed: () => void }) {
+/** Fixed sidebar from lg up; below that it lives in a sheet opened by MobileNavButton. */
+export function Sidebar() {
   return (
-    <aside
-      className={cn(
-        'sticky top-0 hidden h-svh shrink-0 flex-col border-r bg-background md:flex',
-        collapsed ? 'w-14' : 'w-14 xl:w-60',
-      )}
-    >
-      <div className={cn('flex min-h-0 flex-1 flex-col', !collapsed && 'xl:hidden')}>
-        <SidebarBody rail />
-      </div>
-      {!collapsed && (
-        <div className="hidden min-h-0 flex-1 flex-col xl:flex">
-          <SidebarBody />
-        </div>
-      )}
-
-      <div className={cn('flex flex-col gap-2 border-t p-3', !collapsed && 'xl:hidden')}>
-        <SlackStatusPill compact />
-        <ThemeToggle />
-      </div>
-      {!collapsed && (
-        <div className="hidden flex-col gap-2 border-t p-3 xl:flex">
-          <SlackStatusPill />
-          <div className="flex items-center justify-between">
-            <ThemeToggle />
-            <CollapseButton collapsed={false} onClick={onToggleCollapsed} />
-          </div>
-        </div>
-      )}
-      {collapsed && (
-        <div className="hidden justify-center px-3 pb-3 xl:flex">
-          <CollapseButton collapsed onClick={onToggleCollapsed} />
-        </div>
-      )}
+    <aside className="sticky top-0 hidden h-svh w-[252px] shrink-0 overflow-y-auto lg:block">
+      <SidebarContent />
     </aside>
   );
 }
 
-function CollapseButton({ collapsed, onClick }: { collapsed: boolean; onClick: () => void }) {
-  const label = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+export function MobileNavButton({ className }: { className?: string }) {
+  const [open, setOpen] = useState(false);
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button variant="ghost" size="icon-sm" onClick={onClick} aria-label={label}>
-          {collapsed ? <PanelLeftOpen aria-hidden /> : <PanelLeftClose aria-hidden />}
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent side="right">{label}</TooltipContent>
-    </Tooltip>
+    <>
+      <Button variant="ghost" size="icon-sm" className={cn('lg:hidden', className)} aria-label="Open navigation" onClick={() => setOpen(true)}>
+        <Menu aria-hidden />
+      </Button>
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetContent side="left" className="w-[268px] gap-0 p-0" showCloseButton={false}>
+          <SheetTitle className="sr-only">Navigation</SheetTitle>
+          <SheetDescription className="sr-only">Move between mailbox sections</SheetDescription>
+          <SidebarContent onNavigate={() => setOpen(false)} />
+        </SheetContent>
+      </Sheet>
+    </>
   );
 }

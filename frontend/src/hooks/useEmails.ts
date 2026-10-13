@@ -35,6 +35,14 @@ export function useSentEmails(params: EmailListParams) {
   return useQuery(listQuery('sent', params));
 }
 
+/** Totals for the sidebar badges; they match what each list shows (archived/deleted excluded). */
+export function useMailboxCounts() {
+  const params = { page: 1, limit: 1, status: [] };
+  const scheduled = useScheduledEmails(params);
+  const sent = useSentEmails(params);
+  return { scheduled: scheduled.data?.total, sent: sent.data?.total };
+}
+
 export function useEmailSearch(query: SearchQuery, enabled = true) {
   return useQuery({
     queryKey: queryKeys.emails.search(query),
