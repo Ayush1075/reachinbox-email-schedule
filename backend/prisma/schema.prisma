@@ -1,0 +1,135 @@
+// Postgres is the source of truth for every email's intended state.
+// Redis/BullMQ only holds the *timer*; if Redis is wiped, the reconciler
+// rebuilds the queue from this schema (see src/services/reconciler.ts).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String     @id @default(uuid())
+  googleId         String     @unique
+  email            String     @unique
+  name             String
+  avatarUrl        String?
+  slackTeamId      String?
+  slackTeamName    String?
+  slackChannelId   String?
+  slackChannelName String?
+  /// AES-256-GCM ciphertext (see src/lib/crypto.ts) — never stored in plaintext.
+  slackWebhookUrl  String?
+  slackConnectedAt DateTime?
+  createdAt        DateTime   @default(now())
+  campaigns        Campaign[]
+  senders          Sender[]
+
+  @@map("users")
+}
+
+model Sender {
+  id          String     @id @default(uuid())
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label       String
+  smtpHost    String
+  smtpPort    Int
+  smtpSecure  Boolean    @default(false)
+  smtpUser    String
+  /// AES-256-GCM ciphertext (see src/lib/crypto.ts).
+  smtpPass    String
+  fromAddress String
+  /// Hard hourly ceiling for this mailbox. Null → MAX_EMAILS_PER_HOUR_PER_SENDER → MAX_EMAILS_PER_HOUR.
+  hourlyLimit Int?
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  emailJobs   EmailJob[]
+
+  @@unique([userId, fromAddress])
+  @@map("senders")
+}
+
+model Campaign {
+  id              String         @id @default(uuid())
+  userId          String
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject         String
+  body            String         @db.Text
+  startAt         DateTime
+  delayBetweenMs  Int
+  /// Optional per-sender hourly cap requested for this campaign; can only lower the sender's own cap.
+  hourlyLimit     Int?
+  totalRecipients Int
+  status          CampaignStatus @default(SCHEDULED)
+  /// When the hour-window planner expects the last email to go out.
+  plannedEndAt    DateTime?
+  createdAt       DateTime       @default(now())
+  emailJobs       EmailJob[]
+
+  @@index([userId, createdAt])
+  @@map("campaigns")
+}
+
+model EmailJob {
+  id              String      @id @default(uuid())
+  campaignId      String
+  campaign        Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  senderId        String
+  sender          Sender      @relation(fields: [senderId], references: [id])
+  recipient       String
+  subject         String
+  body            String      @db.Text
+  scheduledAt     DateTime
+  sentAt          DateTime?
+  status          EmailStatus @default(SCHEDULED)
+  attempts        Int         @default(0)
+  sequenceIndex   Int
+  messageId       String?
+  /// Ethereal "view this message" URL, surfaced in the dashboard.
+  previewUrl      String?
+  lastError       String?     @db.Text
+  rescheduleCount Int         @default(0)
+  bullJobId       String?     @unique
+  /// `${campaignId}:${sequenceIndex}` — a recipient slot can only ever exist once.
+  idempotencyKey  String      @unique
+
+  // ── Worker claim (idempotency layer 2) ───────────────────────────────────
+  // A worker atomically moves the row to PROCESSING and stamps its BullMQ lock
+  // token. `sendStartedAt` is set immediately before the SMTP handoff, which
+  // lets recovery distinguish "claimed but nothing sent" (safe to retry) from
+  // "crashed mid-send" (outcome unknown → FAILED, never blindly re-sent).
+  claimToken      String?
+  claimedAt       DateTime?
+  sendStartedAt   DateTime?
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([status, scheduledAt])
+  @@index([campaignId])
+  @@index([senderId, sentAt])
+  @@index([senderId, status, scheduledAt])
+  @@map("email_jobs")
+}
+
+enum EmailStatus {
+  SCHEDULED
+  QUEUED
+  PROCESSING
+  SENT
+  FAILED
+  RATE_LIMITED
+  CANCELLED
+}
+
+enum CampaignStatus {
+  SCHEDULED
+  RUNNING
+  COMPLETED
+  PARTIALLY_FAILED
+  CANCELLED
+}
