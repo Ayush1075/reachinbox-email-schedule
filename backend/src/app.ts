@@ -8,6 +8,7 @@ import { requestLogger } from './middleware/requestLogger';
 import { BULL_BOARD_PATH, createAdminRouter } from './routes/admin';
 import { authRouter } from './routes/auth';
 import { healthRouter } from './routes/health';
+import { sendersRouter } from './routes/senders';
 
 export function createApp() {
   const app = express();
@@ -23,6 +24,7 @@ export function createApp() {
   app.use('/health', healthRouter);
   app.use(BULL_BOARD_PATH, createAdminRouter());
   app.use('/api/auth', authRouter);
+  app.use('/api/senders', sendersRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
