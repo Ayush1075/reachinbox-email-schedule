@@ -14,10 +14,14 @@ export function useMe() {
   });
 }
 
-export function useGoogleLogin() {
+type SignInInput = { accessToken: string } | { email: string; password: string };
+
+/** Google (OAuth access token from the custom button) or email + password. Both set the session cookie. */
+export function useSignIn() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (credential: string) => api<{ user: User }>('/api/auth/google', { method: 'POST', body: { credential } }),
+    mutationFn: (input: SignInInput) =>
+      api<{ user: User }>('accessToken' in input ? '/api/auth/google' : '/api/auth/email', { method: 'POST', body: input }),
     onSuccess: ({ user }) => qc.setQueryData(queryKeys.me, user),
   });
 }

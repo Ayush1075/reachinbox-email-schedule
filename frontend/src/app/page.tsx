@@ -1,75 +1,128 @@
 'use client';
 
-import { GoogleLogin } from '@react-oauth/google';
-import { CalendarClock, Gauge, ShieldCheck } from 'lucide-react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useGoogleLogin } from '@react-oauth/google';
+import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
-import { Skeleton } from '@/components/legacy-ui/Skeleton';
-import { useGoogleLogin, useMe } from '@/hooks/useAuth';
+import { z } from 'zod';
+import { GoogleIcon } from '@/components/auth/GoogleIcon';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useMe, useSignIn } from '@/hooks/useAuth';
 import { errorMessage } from '@/lib/api';
 
-const features = [
-  { icon: CalendarClock, text: 'Delayed jobs on BullMQ — no cron, survives restarts' },
-  { icon: Gauge, text: 'Per-sender hourly limits, enforced atomically in Redis' },
-  { icon: ShieldCheck, text: 'Exactly-once delivery, guarded at three layers' },
-];
+const schema = z.object({
+  email: z.string().trim().email('Enter a valid email address'),
+  password: z.string().min(8, 'Password must be at least 8 characters').max(128),
+});
+type FormValues = z.infer<typeof schema>;
+
+const fieldClass =
+  'h-14 rounded-[10px] border-transparent bg-field px-5 text-[15px] shadow-none placeholder:text-muted-foreground focus-visible:border-ring md:text-[15px] dark:bg-field';
 
 export default function LoginPage() {
   const router = useRouter();
   const me = useMe();
-  const login = useGoogleLogin();
-  const clientConfigured = Boolean(process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID);
+  const signIn = useSignIn();
+  const form = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { email: '', password: '' } });
+  const googleConfigured = Boolean(process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID);
 
   useEffect(() => {
     if (me.data) router.replace('/dashboard');
   }, [me.data, router]);
 
+  const onSignedIn = () => router.replace('/dashboard');
+  const onFailed = (err: unknown) => toast.error('Sign-in failed', { description: errorMessage(err) });
+
+  const google = useGoogleLogin({
+    flow: 'implicit',
+    scope: 'openid email profile',
+    onSuccess: ({ access_token }) => signIn.mutate({ accessToken: access_token }, { onSuccess: onSignedIn, onError: onFailed }),
+    onError: () => toast.error('Google sign-in was cancelled or failed'),
+    onNonOAuthError: ({ type }) => type !== 'popup_closed' && toast.error('Could not open the Google sign-in window'),
+  });
+
+  const onSubmit = form.handleSubmit((values) => signIn.mutate(values, { onSuccess: onSignedIn, onError: onFailed }));
+  const { errors } = form.formState;
+  const pending = signIn.isPending;
+
   return (
-    <main className="flex min-h-screen items-center justify-center px-4 py-12">
-      <div className="w-full max-w-[400px]">
-        <div className="rounded-[8px] border border-border bg-surface p-8 shadow-[var(--shadow-card)]">
-          <div className="mb-6 flex items-center gap-2.5">
-            <div className="flex size-8 items-center justify-center rounded-[6px] bg-primary font-mono text-sm font-semibold text-white">R</div>
-            <span className="text-base font-semibold">ReachInbox Scheduler</span>
-          </div>
+    <main className="flex min-h-svh items-center justify-center bg-background px-4 py-12">
+      <div className="w-full max-w-[496px] rounded-xl border bg-card px-6 pt-14 pb-[52px] sm:px-[58px]">
+        <h1 className="text-center text-[38px] leading-tight font-bold tracking-tight">Login</h1>
 
-          <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
-          <p className="mt-1 text-sm text-fg-muted">Schedule email campaigns that send once, on time, within limits.</p>
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={!googleConfigured || pending}
+          onClick={() => google()}
+          className="mt-8 h-[46px] w-full gap-3 rounded-[10px] bg-primary-soft text-[15px] font-normal text-foreground hover:bg-primary-soft/70"
+        >
+          <GoogleIcon className="size-[18px]" />
+          Login with Google
+        </Button>
+        {!googleConfigured && (
+          <p className="mt-2 text-center text-xs text-muted-foreground">Set NEXT_PUBLIC_GOOGLE_CLIENT_ID to enable Google sign-in.</p>
+        )}
 
-          <div className="mt-8 flex min-h-11 justify-center">
-            {me.isPending || login.isPending ? (
-              <Skeleton className="h-10 w-full" />
-            ) : !clientConfigured ? (
-              <p className="rounded-[8px] border border-warning/30 bg-amber-50 px-3 py-2 text-[13px] text-amber-900">
-                Set <code className="font-mono">NEXT_PUBLIC_GOOGLE_CLIENT_ID</code> in <code className="font-mono">frontend/.env.local</code> to enable Google sign-in.
-              </p>
-            ) : (
-              <GoogleLogin
-                width={336}
-                text="continue_with"
-                shape="rectangular"
-                onSuccess={({ credential }) => {
-                  if (!credential) return void toast.error('Google did not return a credential');
-                  login.mutate(credential, {
-                    onSuccess: () => router.replace('/dashboard'),
-                    onError: (err) => toast.error(errorMessage(err)),
-                  });
-                }}
-                onError={() => toast.error('Google sign-in was cancelled or failed')}
-              />
-            )}
-          </div>
-
-          <ul className="mt-8 space-y-2.5 border-t border-border pt-6">
-            {features.map(({ icon: Icon, text }) => (
-              <li key={text} className="flex items-start gap-2.5 text-[13px] text-fg-muted">
-                <Icon className="mt-0.5 size-4 shrink-0" aria-hidden />
-                {text}
-              </li>
-            ))}
-          </ul>
+        <div className="mt-[22px] flex items-center gap-4" aria-hidden>
+          <span className="h-px flex-1 bg-border" />
+          <span className="text-[13px] text-muted-foreground">or sign up through email</span>
+          <span className="h-px flex-1 bg-border" />
         </div>
+
+        <form onSubmit={onSubmit} noValidate className="mt-[26px]">
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="email" className="sr-only">
+                Email ID
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                placeholder="Email ID"
+                aria-invalid={errors.email ? true : undefined}
+                aria-describedby={errors.email ? 'email-error' : undefined}
+                className={fieldClass}
+                {...form.register('email')}
+              />
+              {errors.email && (
+                <p id="email-error" className="mt-1.5 text-[13px] text-destructive">
+                  {errors.email.message}
+                </p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="password" className="sr-only">
+                Password
+              </Label>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                placeholder="Password"
+                aria-invalid={errors.password ? true : undefined}
+                aria-describedby={errors.password ? 'password-error' : undefined}
+                className={fieldClass}
+                {...form.register('password')}
+              />
+              {errors.password && (
+                <p id="password-error" className="mt-1.5 text-[13px] text-destructive">
+                  {errors.password.message}
+                </p>
+              )}
+            </div>
+          </div>
+          <Button type="submit" disabled={pending} className="mt-6 h-12 w-full rounded-[10px] text-[15px] font-normal hover:bg-primary/90">
+            {pending && <Loader2 className="animate-spin" aria-hidden />}
+            Login
+          </Button>
+        </form>
       </div>
     </main>
   );
