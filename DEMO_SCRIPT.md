@@ -1,78 +1,254 @@
-# Demo video script (~5 minutes)
+# Demo video: what to run, what to do, what to say (~7 minutes)
 
-## Before recording — terminals and tabs to have open
+Live site: https://onb-scheduler.duckdns.org
 
-1. **Terminal A** — repo root: `docker compose up -d` already run; keep it free for
-   `docker compose ps` / Redis flush later.
-2. **Terminal B** — `backend/`: `npm run dev:api` (API only, not the combined `dev`, so the
-   worker can be killed independently on camera).
-3. **Terminal C** — `backend/`: `npm run dev:worker`.
-4. **Terminal D** — `backend/`: free, for `npm run load:seed -- ...`.
-5. **Browser tab 1** — `http://localhost:3000` (the app).
-6. **Browser tab 2** — `http://localhost:4000/admin/queues` (Bull Board, logged in with basic
-   auth beforehand so the prompt doesn't interrupt the recording).
-7. **Browser tab 3** — the connected Slack channel.
-8. Have a `.csv` of a few hundred throwaway addresses ready on disk for the upload step.
+The point of the video: **an email is sent exactly once, at about the right time, even when the
+worker dies, Redis is wiped, or the hourly limit is hit.** Every segment below proves one part of
+that. Read the "Say" lines in your own words; they are a guide, not a teleprompter.
 
-Seed at least one Google-linked user with 2 Ethereal senders beforehand
-(`npm run db:seed -- you@gmail.com 2`) so sign-in has something to land on.
+---
 
-## Shot list
+## Part 1: Slack setup (do this once, before recording)
 
-**0:00–0:30 — Login**
-Open tab 1, show the login page, click Login with Google. Call out: real OAuth, httpOnly session
-cookie, no mock auth path (email and password sign-in is there too).
+Slack needs an HTTPS redirect URL, and your site already has one, so no tunnel is needed.
 
-**0:30–1:00 — Tour**
-Show the Scheduled and Sent mailboxes (sidebar counts, search, filter), then Overview: the stat
-cards and the hourly quota panel — note it reads the *same Redis keys the rate limiter itself
-increments*, not a separate estimate. Mention Settings holds the Slack connection.
+1. In Slack, create a channel for alerts, e.g. `#onb-alerts`.
+2. Go to https://api.slack.com/apps -> **Create New App** -> **From scratch**. Name it
+   `ONB Scheduler`, pick your workspace.
+3. **Basic Information** -> copy the **Client ID** and **Client Secret**.
+4. **OAuth & Permissions** -> **Redirect URLs** -> **Add New Redirect URL**:
+   `https://onb-scheduler.duckdns.org/api/slack/callback` -> **Add** -> **Save URLs**.
+5. **Features -> Incoming Webhooks** -> switch **Activate Incoming Webhooks** to **On**.
+   (That is what grants the `incoming-webhook` scope the app asks for.)
+6. Put the credentials on the server (PowerShell on your PC):
 
-**1:00–2:00 — Compose with CSV upload**
-Click Compose. Use Upload List with the prepared CSV and call out the "N valid email addresses"
-line with its invalid and duplicate counts. Fill in subject and body (show the toolbar), attach a
-file, pick both Ethereal senders in From, use the clock to Send Later about a minute out, set a delay and hourly limit that will force at least one sender into a
-second hour window. Point at the live schedule preview line ("X emails · N senders · ... →
-completes in ~Y, finishing around HH:MM"). Submit.
+   ```powershell
+   cd C:\Users\admin\source\reachinbox-email-scheduler
+   $key = "C:\Users\admin\Downloads\ssh-key-2026-10-14 (1).key"
+   $vm  = "ubuntu@129.225.107.142"
+   ssh -i $key $vm
+   ```
+   Then on the server:
+   ```bash
+   cd ~/onb
+   nano .env.prod
+   ```
+   Fill in these three lines (no spaces, no quotes), then **Ctrl+O, Enter, Ctrl+X**:
+   ```
+   SLACK_CLIENT_ID=<client id>
+   SLACK_CLIENT_SECRET=<client secret>
+   SLACK_REDIRECT_URI=https://onb-scheduler.duckdns.org/api/slack/callback
+   ```
+   ```bash
+   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --no-build --force-recreate api worker
+   exit
+   ```
+7. In the app: **Settings -> Slack alerts -> Connect Slack**. Slack asks which channel to post to
+   (choose `#onb-alerts`) -> **Allow**. You land back on Settings showing "Posting to #onb-alerts".
+8. Click **Send test notification** and confirm the message appears in Slack.
 
-**2:00–2:45 — Watch it work**
-Back in the Scheduled mailbox, then — as the start time arrives — watch rows leave it and appear
-in Sent (5s poll). Open a sent email and click **View delivered message in Ethereal**; it opens
-the actual rendered email, attachment included, in a new tab. This is the single most convincing "it's real"
-moment — don't rush it.
+If Slack says "redirect_uri did not match", the URL in step 4 and `SLACK_REDIRECT_URI` must be
+identical, character for character.
 
-**2:45–3:15 — Bull Board**
-Switch to tab 2. Show delayed jobs waiting, one active, completed count climbing. This is the
-same queue the dashboard is driven by, viewed directly.
+---
 
-**3:15–4:15 — Kill the worker, show restart safety**
-In Terminal C, `Ctrl+C` the worker *only* (API in Terminal B stays up — the dashboard keeps
-responding). Point at a campaign still mid-flight: show jobs sitting in
-Scheduled/Bull Board's "delayed," not advancing. Restart the worker (`npm run dev:worker`). Show
-sending resumes exactly where it left off — no gaps, no duplicate rows in Sent. Say out loud:
-*nothing was lost, nothing was sent twice.*
+## Part 2: Preparation (10 minutes before recording)
 
-**4:15–4:45 — Load script + rate-limit deferral + live Slack alert**
-In Terminal D:
-```bash
-npm run load:seed -- --email you@gmail.com --count 1000 --limit 50 --parallel 2
+### Files on your Desktop
+
+Run in PowerShell. This creates a list with 18 good addresses, 1 duplicate and 2 invalid rows, so
+the upload screen has something to show:
+
+```powershell
+$rows = @("Name,Email")
+1..18 | ForEach-Object { $rows += "Lead $_,lead$_@acme-demo.com" }
+$rows += "Duplicate,lead1@acme-demo.com"
+$rows += "Broken,not-an-email"
+$rows += "Also broken,missing@"
+$rows | Set-Content -Encoding utf8 "$env:USERPROFILE\Desktop\leads.csv"
+
+"A short attachment for the demo." | Set-Content "$env:USERPROFILE\Desktop\one-pager.txt"
 ```
-`--parallel 2` deliberately overbooks the current hour (two campaigns planned independently,
-together exceeding the 50/hour cap per sender). Watch emails flip to `RATE_LIMITED` in the
-dashboard/Bull Board, then get rescheduled into the next hour window. Switch to tab 3 (Slack) and
-show the alert arriving — one message per sender for the whole window, not one per deferred job.
 
-**4:45–5:00 — Close**
-Say what's not shown (see README → "What I'd build next"), and where the README covers anything
-skipped for time (architecture, API reference, env vars).
+### Windows to have open (arrange side by side)
 
-## Lines worth saying out loud
+| Window | What |
+| --- | --- |
+| Browser tab 1 | https://onb-scheduler.duckdns.org (signed out, so you show the login) |
+| Browser tab 2 | https://onb-scheduler.duckdns.org/admin/queues (user `admin`, password from `.env.prod`, already signed in) |
+| Browser tab 3 | Slack, with `#onb-alerts` open |
+| PowerShell | In the repo folder, with the variables below already set |
 
-- "This is BullMQ delayed jobs, not cron — the schedule lives in Redis as data, not as a process
-  that has to keep running."
-- "The quota meter on the dashboard and the limiter that's actually enforcing the cap read the
-  exact same Redis keys — it's not a separate guess."
-- "I just killed the worker process, not the whole app — the API and the schedule are still
-  fine. That's on purpose: it's how this scales horizontally."
-- "Nothing got dropped for hitting the limit — it got rescheduled into the next hour, in order,
-  and Slack told me about it exactly once."
+In the PowerShell window, set these once so the commands are short:
+
+```powershell
+cd C:\Users\admin\source\reachinbox-email-scheduler
+$key = "C:\Users\admin\Downloads\ssh-key-2026-10-14 (1).key"
+$vm  = "ubuntu@129.225.107.142"
+$dc  = "cd ~/onb && docker compose -f docker-compose.prod.yml --env-file .env.prod"
+```
+
+Check everything is healthy: `ssh -i $key $vm "$dc ps"` should list every service as Up.
+
+### Recording tips
+- 1080p, browser zoom 110 to 125 percent, close other tabs and notifications.
+- Make the PowerShell font large. Pause 1 second after each command so viewers can read it.
+- Do not run the rate-limit step in the last 2 minutes of an hour (the window rolls over).
+- Do a full dry run once. Anything you create is harmless.
+
+---
+
+## Part 3: The video
+
+### 0:00 - 0:30 Intro
+
+**Do:** Show the login page. No clicking yet.
+
+**Say:** "This is a scheduler for outbound email. You schedule an email or a whole campaign for a
+future time, and it goes out exactly once, even if something crashes. It is built on BullMQ delayed
+jobs, not cron, with Postgres as the source of truth and Redis holding the timers. I'll show the
+product first, and then break it on purpose."
+
+### 0:30 - 1:00 Sign in and tour
+
+**Do:** Click **Login with Google** and sign in. You land on the Scheduled mailbox. Point at the
+sidebar: Scheduled and Sent with live counts, then click **Overview** and back.
+
+**Say:** "Real Google sign-in, with an httpOnly session cookie. There is email and password too.
+The sidebar counts update live. The mailbox polls every few seconds, so you will see rows move on
+their own."
+
+### 1:00 - 2:30 Compose and schedule
+
+**Do:**
+1. Click **Senders** in the sidebar -> **Add Ethereal sender** (skip if you already have one).
+   Say: "Ethereal is a fake SMTP inbox. The send path is real SMTP, but nothing reaches real people."
+2. Click **Compose**.
+3. Click **Upload List** and choose `leads.csv`.
+   Point at "18 valid email addresses from leads.csv - 2 invalid skipped - 1 duplicate removed".
+4. Type a subject. In the body, type a sentence and make part of it **bold** with the toolbar.
+5. Click the **paperclip** and attach `one-pager.txt`.
+6. Set **Delay between 2 emails** to `2` and **Hourly Limit** to `10`.
+7. Point at the schedule preview line (it will turn amber: 18 emails against a cap of 10/hour
+   moves some to the next hour).
+8. Change **Hourly Limit** back to `200`. The preview turns neutral again.
+9. Click the **clock** icon -> choose **Pick date & time** -> pick today, set the time about 1
+   minute from now -> **Done**. The button now reads **Send Later**.
+10. Click **Send Later**.
+
+**Say:** "The upload is parsed in the browser: invalid rows and duplicates are reported before
+anything is sent. The schedule preview is the same planner the server uses, so it tells me up front
+when the hourly limit will spread a campaign across hours. Nothing is dropped; it is rescheduled."
+
+### 2:30 - 3:30 Watch it send
+
+**Do:** On **Scheduled**, show the 18 rows with their time pills. Wait for the start time. Rows
+disappear from Scheduled and the Sent count goes up. Click **Sent**, then open one email. Click
+**View delivered message in Ethereal** (new tab) and show the rendered email with the attachment.
+
+**Say:** "Rows move from Scheduled to Sent by themselves. This link opens the real message as
+delivered, with the bold text and the attachment, so you can see it is actually sent, not just a
+status badge."
+
+### 3:30 - 4:00 Overview and Bull Board
+
+**Do:** Click **Overview**. Point at the stat cards, the **Hourly quota** panel and the throughput
+chart. Switch to browser tab 2 (Bull Board) and show the `email-send` queue with completed jobs.
+
+**Say:** "The quota panel reads the exact Redis counters the rate limiter increments, so it is the
+limiter's real state, not an estimate. This is Bull Board, the live view of the queue."
+
+### 4:00 - 5:15 Kill the worker (restart safety)
+
+**Do:**
+1. In PowerShell, stop only the worker:
+   ```powershell
+   ssh -i $key $vm "$dc stop worker"
+   ```
+2. In the app, **Compose** -> **Upload List** with `leads.csv` -> subject `Worker down test` ->
+   body any text -> click **Send** (no Send Later).
+3. Show **Scheduled**: all 18 emails are there and **not** sending. Show Bull Board: 18 jobs
+   waiting.
+4. Start the worker again:
+   ```powershell
+   ssh -i $key $vm "$dc start worker"
+   ```
+5. Watch Scheduled empty out into Sent. Open **Campaigns**: the campaign shows 18 / 18 delivered.
+
+**Say:** "I just killed the worker, and the API is still up. The emails are not lost: they are
+sitting in Postgres and in Redis. When the worker comes back it picks up exactly where it left
+off. Eighteen in, eighteen out, no duplicates. Duplicate sends are blocked at three layers: a
+deterministic job ID, a conditional database claim, and a Redis sent marker."
+
+### 5:15 - 6:00 Wipe Redis (reconciler)
+
+**Do:**
+1. Compose a campaign for a couple of minutes ahead (use **Send Later** with a custom time about
+   3 minutes out), with a few addresses from `leads.csv`.
+2. Wipe Redis completely:
+   ```powershell
+   ssh -i $key $vm "$dc exec -T redis redis-cli FLUSHALL"
+   ```
+3. Show Bull Board: the queue is empty. Show **Scheduled** in the app: the emails are still
+   listed.
+4. Run the worker boot sweep by restarting the worker:
+   ```powershell
+   ssh -i $key $vm "$dc restart worker"
+   ```
+5. Refresh Bull Board: the delayed jobs are back. Wait for the time; they send.
+
+**Say:** "Now I deleted every timer. Redis is empty. But Postgres still has the truth, and a
+reconciler sweeps it on startup, finds jobs with no timer, and rebuilds them. The IDs are
+deterministic, so rebuilding something that already exists is harmless. That is how it survives
+losing Redis entirely. The sweep is a safety net; scheduling itself is still only BullMQ delayed
+jobs, no cron."
+
+### 6:00 - 7:00 Rate limit and the Slack alert
+
+**Do:**
+1. Make sure Slack tab 3 is visible. Run the load script (the only command for this part;
+   replace the email with the account you are signed in as):
+   ```powershell
+   Get-Content deploydemo-load.cjs -Raw | ssh -i $key $vm "$dc exec -T -e DEMO_EMAIL=you@gmail.com -e DEMO_COUNT=30 -e DEMO_LIMIT=20 api node -"
+   ```
+   It creates a fresh sender capped at 20/hour and two 30-email campaigns at the same instant.
+2. Go to **Overview**. Watch the quota panel for the new sender climb to `20 / 20`, turn red, and
+   show the "emails deferred to the next window" notice.
+3. Go to **Scheduled**, open the filter and pick **Deferred by rate limit**. Hover a pill to show the
+   tooltip with the next window.
+4. Switch to Slack: show the single alert.
+
+**Say:** "I just scheduled two campaigns at the same instant for one sender capped at 20 per hour.
+Each was planned without knowing about the other, so together they overbook the hour. This is
+exactly what the runtime limiter is for: an atomic Redis Lua script that lets exactly 20 through.
+The rest are not failed and not dropped. They are rescheduled into the next hour in their original
+order, and Slack gets one message, not forty. One alert per sender per hour window."
+
+### 7:00 - 7:30 Wrap up
+
+**Do:** Open the README on GitHub (or the repo in your editor) and scroll through the section
+headings briefly.
+
+**Say:** "To recap: delayed jobs not cron, three layers of idempotency, an atomic rate limiter, a
+reconciler that survives losing Redis, and graceful degradation for Elasticsearch and Slack. It has
+tests for the limiter, planner, worker and reconciler, and the README has the architecture, the
+load walkthrough and the trade-offs. Thanks for watching."
+
+---
+
+## Part 4: After recording
+
+- Delete test senders and campaigns if you want a clean account (Senders -> Deactivate;
+  Campaigns -> cancel).
+- Nothing needs stopping; the stack restarts on its own after a reboot.
+
+## If something goes wrong on camera
+
+| Symptom | Fix |
+| --- | --- |
+| Emails not sending after you start the worker | `ssh -i $key $vm "$dc logs worker --tail 30"` |
+| Slack alert never arrives | Settings: is Slack connected? Click Send test notification. The alert only fires when a sender hits its cap. |
+| Quota panel does not reach the cap | Run the script again; it creates a fresh sender each time. |
+| Load script says "No user with email" | Sign in to the app with that account once, and use the same email. |
+| Google login fails | The site URL must be in Authorized JavaScript origins; your Google account must be a test user. |
+| Site unreachable | `ssh -i $key $vm "$dc ps"` and check Caddy: `$dc logs caddy --tail 20` |
