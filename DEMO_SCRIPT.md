@@ -209,7 +209,7 @@ jobs, no cron."
 1. Make sure Slack tab 3 is visible. Run the load script (the only command for this part;
    replace the email with the account you are signed in as):
    ```powershell
-   Get-Content deploydemo-load.cjs -Raw | ssh -i $key $vm "$dc exec -T -e DEMO_EMAIL=you@gmail.com -e DEMO_COUNT=30 -e DEMO_LIMIT=20 api node -"
+   Get-Content .\deploy\demo-load.cjs -Raw | ssh -i $key $vm "$dc exec -T -e DEMO_EMAIL=you@gmail.com -e DEMO_COUNT=30 -e DEMO_LIMIT=20 api node -"
    ```
    It creates a fresh sender capped at 20/hour and two 30-email campaigns at the same instant.
 2. Go to **Overview**. Watch the quota panel for the new sender climb to `20 / 20`, turn red, and
