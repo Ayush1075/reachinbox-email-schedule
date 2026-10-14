@@ -566,203 +566,44 @@ GET    /admin/queues             -> Bull Board (HTTP basic auth)
 
 ## Deployment (Oracle Cloud Always Free, 1 GB VM)
 
-The production stack is : Postgres, Redis (AOF), a one-off migration job,
+The production stack is `docker-compose.prod.yml`: Postgres, Redis (AOF), a one-off migration job,
 the API, the worker, the Next.js server and Caddy for automatic HTTPS. Everything sits behind one
 hostname, so the dashboard and API share an origin (no CORS, simple cookies). It is sized for a
-1 GB VM and measured at roughly 190 MB resident. Elasticsearch is left out there, and search
-falls back to Postgres  as designed.
+1 GB VM and measured at roughly 190 MB resident. Elasticsearch is left out of this profile, and
+search falls back to Postgres `ILIKE` as designed.
 
-**One-time VM setup** (Ubuntu): open TCP 80/443 in the Oracle security list *and* the VM firewall
-(, same for 443,
-), install Docker, add a 2 GB swap file, and point a hostname
-(e.g. DuckDNS) at the VM.
+**One-time VM setup** (Ubuntu):
 
-**Build and ship** (images are built on your machine, because the VM is too small to run
-;  values are baked in at build time):
+```bash
+# open the VM firewall (also add TCP 80/443 ingress rules in the Oracle security list)
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 80 -j ACCEPT
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 443 -j ACCEPT
+sudo netfilter-persistent save
 
-\#1 [internal] load local bake definitions
-#1 reading from stdin 1.17kB done
-#1 DONE 0.0s
+# Docker, plus swap so a 1 GB machine has headroom
+curl -fsSL https://get.docker.com | sh && sudo usermod -aG docker $USER
+sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+```
 
-#2 [web internal] load build definition from Dockerfile
-#2 transferring dockerfile: 727B 0.0s done
-#2 DONE 0.1s
+Point a hostname (for example a free DuckDNS name) at the VM's public IP.
 
-#3 [migrate internal] load build definition from Dockerfile
-#3 transferring dockerfile: 853B 0.0s done
-#3 DONE 0.1s
+**Build and ship.** Images are built on your own machine because the VM is too small to run
+`next build`, and the `NEXT_PUBLIC_*` values are baked in at build time:
 
-#4 [migrate] resolve image config for docker-image://docker.io/docker/dockerfile:1
-#4 DONE 1.2s
+```bash
+cp deploy/env.example .env.prod      # fill in DOMAIN, secrets and GOOGLE_CLIENT_ID
+docker compose -f docker-compose.prod.yml --env-file .env.prod build
+docker save onb-backend:latest onb-frontend:latest | gzip | ssh ubuntu@VM_IP 'gunzip | docker load'
 
-#5 [web] docker-image://docker.io/docker/dockerfile:1@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e
-#5 resolve docker.io/docker/dockerfile:1@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e 0.0s done
-#5 CACHED
+ssh ubuntu@VM_IP 'mkdir -p ~/onb'
+scp docker-compose.prod.yml .env.prod ubuntu@VM_IP:~/onb/
+scp -r deploy ubuntu@VM_IP:~/onb/
+ssh ubuntu@VM_IP 'cd ~/onb && docker compose -f docker-compose.prod.yml --env-file .env.prod up -d'
+```
 
-#6 [web internal] load metadata for docker.io/library/node:22-slim
-#6 DONE 0.9s
-
-#7 [web internal] load .dockerignore
-#7 transferring context: 99B 0.0s done
-#7 DONE 0.0s
-
-#8 [migrate internal] load .dockerignore
-#8 transferring context: 90B done
-#8 DONE 0.0s
-
-#9 [migrate internal] load build context
-#9 transferring context: 2.62kB done
-#9 DONE 0.0s
-
-#10 [web build 1/6] FROM docker.io/library/node:22-slim@sha256:c3de60bf2f9dd0ac6370e6117950ff62d6e339527e7472301c9c78a017978392
-#10 resolve docker.io/library/node:22-slim@sha256:c3de60bf2f9dd0ac6370e6117950ff62d6e339527e7472301c9c78a017978392 0.0s done
-#10 DONE 0.0s
-
-#11 [migrate stage-1 5/7] COPY --from=build /app/dist ./dist
-#11 CACHED
-
-#12 [migrate build 10/10] RUN npm run build
-#12 CACHED
-
-#13 [migrate stage-1 3/7] RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
-#13 CACHED
-
-#14 [migrate build  9/10] COPY src ./src
-#14 CACHED
-
-#15 [migrate build 2/6] WORKDIR /app
-#15 CACHED
-
-#16 [migrate stage-1 6/7] COPY --from=build /app/prisma ./prisma
-#16 CACHED
-
-#17 [migrate build  7/10] RUN npx prisma generate
-#17 CACHED
-
-#18 [migrate build  8/10] COPY tsconfig.json tsconfig.build.json ./
-#18 CACHED
-
-#19 [migrate build  3/10] RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
-#19 CACHED
-
-#20 [migrate build  6/10] COPY prisma ./prisma
-#20 CACHED
-
-#21 [migrate build  5/10] RUN npm ci
-#21 CACHED
-
-#22 [migrate stage-1 4/7] COPY --from=build /app/node_modules ./node_modules
-#22 CACHED
-
-#23 [migrate build  4/10] COPY package.json package-lock.json ./
-#23 CACHED
-
-#24 [migrate stage-1 7/7] COPY package.json ./
-#24 CACHED
-
-#25 [migrate] exporting to image
-#25 exporting layers done
-#25 exporting manifest sha256:5694a89f743772bfce9ff819e7aa2ab9d50b663d5fc8dd009e35ef89d4cea073 done
-#25 exporting config sha256:46ec364c3a4633ed6d38c37d82371b38b2b0dcf5ccdaf94350cd7f9d576e8cc5 done
-#25 exporting attestation manifest sha256:5f483381ee160a1625a40724d78e06df6fd29a65398b5152bb9a3e23804e5205 0.0s done
-#25 exporting manifest list sha256:adad988e5f8a5c36f0e32f86a6f522cf2ca40bfc5d0e25558f469a4002779f6e 0.0s done
-#25 naming to docker.io/library/onb-backend:latest done
-#25 unpacking to docker.io/library/onb-backend:latest 0.0s done
-#25 DONE 0.1s
-
-#26 [web internal] load build context
-#26 transferring context: 6.51kB 0.0s done
-#26 DONE 0.0s
-
-#27 [web build 4/6] RUN npm ci
-#27 CACHED
-
-#28 [web build 3/6] COPY package.json package-lock.json ./
-#28 CACHED
-
-#15 [web build 2/6] WORKDIR /app
-#15 CACHED
-
-#29 [web build 5/6] COPY . .
-#29 CACHED
-
-#30 [web build 6/6] RUN npm run build
-#30 ...
-
-#31 [migrate] resolving provenance for metadata file
-#31 DONE 0.0s
-
-#30 [web build 6/6] RUN npm run build
-#30 0.365 
-#30 0.365 > reachinbox-scheduler-frontend@0.1.0 build
-#30 0.365 > next build
-#30 0.365 
-#30 0.804 ▲ Next.js 16.4.0 (Turbopack)
-#30 0.898 ✓ Running next.config.ts took 93ms
-#30 0.914 - Cache Components enabled
-#30 0.914 - Partial Prefetching enabled
-#30 0.914 - Experiments (use with caution):
-#30 0.914   · instantInsights
-#30 0.914 
-#30 0.946   Creating an optimized production build ...
-#30 7.545 ✓ Compiled successfully in 6.6s
-#30 7.552   Running TypeScript ...
-#30 12.73   Finished TypeScript in 5.1s ...
-#30 12.73   Collecting page data using 11 workers ...
-#30 14.02   Generating static pages using 11 workers (0/13) ...
-#30 15.13   Generating static pages using 11 workers (3/13) 
-#30 15.14   Generating static pages using 11 workers (6/13) 
-#30 15.32   Generating static pages using 11 workers (9/13) 
-#30 15.47 ✓ Generating static pages using 11 workers (13/13) in 1449ms
-#30 15.48   Finalizing page optimization ...
-#30 15.88 
-#30 15.88 Route (app)
-#30 15.88 ┌ ○ /
-#30 15.88 ├ ○ /_not-found
-#30 15.88 ├ ○ /dashboard
-#30 15.88 ├ ○ /dashboard/campaigns
-#30 15.88 ├ ○ /dashboard/compose
-#30 15.88 ├   /dashboard/emails/[id]
-#30 15.88 │ └ ◐ /dashboard/emails/[id]
-#30 15.88 ├ ○ /dashboard/overview
-#30 15.88 ├ ○ /dashboard/scheduled
-#30 15.88 ├ ○ /dashboard/senders
-#30 15.88 ├ ○ /dashboard/sent
-#30 15.88 ├ ○ /dashboard/settings
-#30 15.88 └ ○ /icon.svg
-#30 15.88 
-#30 15.88 
-#30 15.88 ○  (Static)             prerendered as static content
-#30 15.88 ◐  (Partial Prerender)  prerendered as static HTML with dynamic server-streamed content
-#30 15.88 
-#30 DONE 16.0s
-
-#15 [web build 2/6] WORKDIR /app
-#15 CACHED
-
-#32 [web stage-1 3/4] COPY --from=build /app/.next/standalone ./
-#32 DONE 0.6s
-
-#33 [web stage-1 4/4] COPY --from=build /app/.next/static ./.next/static
-#33 DONE 0.1s
-
-#34 [web] exporting to image
-#34 exporting layers
-#34 exporting layers 1.7s done
-#34 exporting manifest sha256:88f167dece04df21812a66fc8b376a8db25041a720b43f6c77241aa6f4b1d6b5 0.0s done
-#34 exporting config sha256:21669435a906c1d569d5f1893eb6e07b0e153eeaaa4c441fe9bb09a1e9ccc93c 0.0s done
-#34 exporting attestation manifest sha256:749ec7bc75370fca6ad12da4da5e421ed392aeab7c4c7e44af0374886d3d1576
-#34 exporting attestation manifest sha256:749ec7bc75370fca6ad12da4da5e421ed392aeab7c4c7e44af0374886d3d1576 0.0s done
-#34 exporting manifest list sha256:d68b831b4f627d2c89b6e455aa5e9495286ed506e87cabd01eebb38c20c095f7 0.0s done
-#34 naming to docker.io/library/onb-frontend:latest done
-#34 unpacking to docker.io/library/onb-frontend:latest
-#34 unpacking to docker.io/library/onb-frontend:latest 0.5s done
-#34 DONE 2.3s
-
-#35 [web] resolving provenance for metadata file
-#35 DONE 0.0s
-Add  to the Google OAuth client's authorized JavaScript origins, and use
- as the Slack redirect URL. Migrations run automatically
+Then add `https://<DOMAIN>` to the Google OAuth client's authorized JavaScript origins, and use
+`https://<DOMAIN>/api/slack/callback` as the Slack redirect URL. Migrations run automatically
 before the API and worker start.
 
 ## Testing
