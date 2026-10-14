@@ -71,7 +71,7 @@ export function QuotaPanel() {
                       <p className="truncate text-sm font-medium">{s.label}</p>
                       <p className="truncate font-mono text-xs text-muted-foreground">{s.fromAddress}</p>
                     </div>
-                    <p className={cn('font-mono text-sm tabular-nums', tone === 'full' && 'text-destructive')}>
+                    <p className={cn('shrink-0 font-mono text-sm whitespace-nowrap tabular-nums', tone === 'full' && 'text-destructive')}>
                       {s.used} / {s.limit}
                       {tone === 'full' && <span className="sr-only"> (limit reached)</span>}
                     </p>

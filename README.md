@@ -17,7 +17,11 @@ never at the expense of it.
 
 ## Screenshots
 
-| Dashboard | Compose | Bull Board | Slack alert |
+| Scheduled mailbox | Compose | Overview (quota panel) | Reading view |
+| --- | --- | --- | --- |
+| `<screenshot>` | `<screenshot>` | `<screenshot>` | `<screenshot>` |
+
+| Overview (dark) | Senders | Bull Board | Slack alert |
 | --- | --- | --- | --- |
 | `<screenshot>` | `<screenshot>` | `<screenshot>` | `<screenshot>` |
 
@@ -35,9 +39,14 @@ never at the expense of it.
 | Logging | Pino | Structured JSON logs; every line in a job's lifecycle carries `emailJobId`/`campaignId`/`bullJobId`. |
 | Tests | Vitest | Fast, native ESM/TS support, shared config style with the rest of the stack. |
 | Frontend | Next.js (App Router) + TypeScript | File-based routing, server/client component split, fast dev loop. |
-| Server state | TanStack Query | Polling with `refetchInterval`, cache invalidation on mutation, pause-when-hidden — all built in. |
-| Styling | Tailwind CSS | Utility classes match the small, consistent design-token set this UI uses without a separate CSS layer. |
-| CSV parsing | PapaParse | Robust delimiter/quote handling for arbitrary user-uploaded CSVs, done client-side before anything is sent to the server. |
+| Components | shadcn/ui on Radix UI | Owned, editable component source (no framework to fight) on Radix primitives, so dialogs, menus, popovers and tooltips get correct focus management, keyboard navigation and ARIA for free. |
+| Styling | Tailwind CSS v4 + CSS variables | Semantic design tokens with a complete dark counterpart; no per-component colour values. |
+| Server state | TanStack Query | Polling with `refetchInterval`, optimistic updates with rollback, pause-when-hidden — all built in. |
+| Tables | TanStack Table | Headless sorting and column definitions behind one generic `DataTable`. |
+| Forms | react-hook-form + Zod | Typed, validated forms; the same schema style as the API. |
+| Rich text | Tiptap (ProseMirror) | A real editor with the toolbar from the design, emitting HTML the server then sanitizes. |
+| Motion and charts | Framer Motion, Recharts | Restrained count-up on stat cards; one small throughput chart. |
+| CSV parsing | PapaParse, react-dropzone | Robust delimiter/quote handling and drag-and-drop, all in the browser before anything is sent to the server. |
 
 ## Quick start
 
@@ -106,6 +115,52 @@ npm run test
 
 The frontend only needs the backend reachable at `NEXT_PUBLIC_API_URL` and the same Google OAuth
 client ID as the backend.
+
+## Frontend
+
+The UI is built from the supplied Figma (Outbox Labs assignment): login, the Scheduled/Sent
+mailbox, the reading view and the compose screen are reproduced from it. Screens the Figma does
+not cover (Overview, Campaigns, Senders, Settings) reuse its tokens and components rather than
+introducing a second visual language.
+
+### Screens
+
+| Route | What it is |
+| --- | --- |
+| `/` | Login: Google, or email and password (creates the account on first use). |
+| `/dashboard/scheduled`, `/dashboard/sent` | The mailbox: search, filter (status, starred, archived), refresh, infinite scroll, 5-second polling. Rows show recipient, time pill, subject and body preview; star, archive, delete and cancel act optimistically. |
+| `/dashboard/emails/[id]` | Reading view: sanitized HTML body, attachments, delivery details and the Ethereal preview link. |
+| `/dashboard/compose` | Rich-text compose with recipient chips, CSV/TXT upload, attachments, Send Later, and a live schedule preview. |
+| `/dashboard/overview` | Stat cards, live per-sender quota (read from the limiter's own Redis counters), throughput chart, recent activity. |
+| `/dashboard/campaigns` | Campaign list with delivery progress and cancel. |
+| `/dashboard/senders` | Sender cards with quota, SMTP test, edit, deactivate, and an add dialog. |
+| `/dashboard/settings` | Slack connect/test/disconnect, server defaults, theme, account. |
+
+### Design system
+
+- **Tokens** live in `src/app/globals.css` as semantic CSS variables (`--background`,
+  `--primary`, `--muted`, `--field`, ...). Each has a dark counterpart under `.dark`; light is the
+  default because that is what the design is drawn in. Components use token classes only.
+- **Typography:** Inter for UI, JetBrains Mono for addresses, times, counts and quota figures.
+- **Status** is always rendered by one component, `StatusPill`, and carries an icon and text as
+  well as colour.
+- **Dark mode** via `next-themes` (Account menu or Settings → Appearance).
+
+### Component architecture
+
+- `src/components/ui/` is shadcn/ui source (owned, editable). Nothing else lives there.
+- `src/components/common/` holds shared pieces (`DataTable`, `EmptyState`, `ConfirmDialog`).
+- Feature folders (`email/`, `dashboard/`, `senders/`, `campaigns/`, `settings/`, `layout/`) hold
+  presentational components; **containers fetch, presentational components take props**.
+- All server state goes through hooks in `src/hooks/`, keyed from `src/lib/query-keys.ts`;
+  there are no `fetch` calls outside `src/lib/api.ts`.
+
+### Accessibility
+
+Radix handles focus, keyboard and ARIA for dialogs, menus and popovers. In addition: a skip link,
+icon-only buttons carry `aria-label`s, every form control has a label, live regions announce
+list counts and schedule previews, status never relies on colour alone, and the toolbar and
+rows are reachable by keyboard. `Ctrl/Cmd+K` focuses the mailbox search.
 
 ## Ethereal Email setup
 
@@ -179,14 +234,18 @@ link. No account or signup is needed — the app creates mailboxes for you.
 2. **APIs & Services → Credentials → Create Credentials → OAuth client ID** → Application type
    **Web application**.
 3. **Authorized JavaScript origins:** `http://localhost:3000`
-4. **Authorized redirect URIs:** none needed — `@react-oauth/google`'s `GoogleLogin` button uses
-   the implicit/credential flow in the browser, not a server redirect.
+4. **Authorized redirect URIs:** none needed — the Login with Google button uses Google's
+   browser-side token client (a popup), not a server redirect.
 5. Copy the **Client ID** into both `backend/.env` (`GOOGLE_CLIENT_ID`) and
    `frontend/.env.local` (`NEXT_PUBLIC_GOOGLE_CLIENT_ID`) — it is the same value in both places.
-6. Sign in on `http://localhost:3000`. The frontend sends the Google ID token to
-   `POST /api/auth/google`; the backend verifies it against `GOOGLE_CLIENT_ID` with
-   `google-auth-library`, upserts the `User` row, and sets an httpOnly session cookie. No mock
-   auth path exists.
+6. Sign in on `http://localhost:3000`. The frontend sends the Google access token to
+   `POST /api/auth/google`; the backend checks its audience against `GOOGLE_CLIENT_ID` (a token
+   issued to another app is rejected), upserts the `User` row, and sets an httpOnly session
+   cookie. (The endpoint also accepts a Google ID token, verified with `google-auth-library`.)
+   No mock auth path exists.
+7. **Email and password** is also supported (`POST /api/auth/email`): scrypt-hashed, limited to 20
+   attempts per IP per 15 minutes, and it never sets a password on an account that signs in with
+   Google, so knowing someone's address is not enough to take their account over.
 
 ## Slack app setup
 
@@ -202,8 +261,8 @@ link. No account or signup is needed — the app creates mailboxes for you.
 4. Copy the app's **Client ID** and **Client Secret** from **Basic Information** into
    `backend/.env` as `SLACK_CLIENT_ID` / `SLACK_CLIENT_SECRET`, and set `SLACK_REDIRECT_URI` to
    the exact URL registered in step 2.
-5. From the dashboard, click **Connect Slack** → approve → you're redirected back with
-   `?slack=connected`. A rate-limit alert now posts to the channel you picked, the moment any
+5. From **Settings → Slack alerts**, click **Connect Slack** → approve → you're redirected back
+   to Settings with `?slack=connected`. A rate-limit alert now posts to the channel you picked, the moment any
    sender's hourly cap is hit.
 6. Leaving the three `SLACK_*` variables blank is fully supported: `GET /api/slack/status`
    reports `configured: false`, the dashboard shows a disabled "Slack not configured" state, and
@@ -443,15 +502,16 @@ Run `npm run load:seed -- --email you@gmail.com --count 1000 --limit 200` (2 act
 
 | Requirement | Status | How |
 | --- | --- | --- |
-| Google sign-in | ✅ | `@react-oauth/google`, httpOnly cookie session (`src/app/page.tsx`, `src/hooks/useAuth.ts`). |
-| Dashboard shell | ✅ | Header, Slack pill, user menu, stat cards, URL-synced tabs (`src/app/dashboard/Dashboard.tsx`). |
-| Live quota meter | ✅ | `GET /api/emails/stats` reads the limiter's own Redis keys (`src/components/dashboard/StatCards.tsx`). |
-| Compose with CSV upload | ✅ | Drag/drop + PapaParse, valid/invalid/duplicate counts (`src/components/email/ComposeModal.tsx`, `src/lib/recipients.ts`). |
-| Live schedule preview | ✅ | Client-side mirror of the server planner (`src/lib/schedulePreview.ts`). |
-| Scheduled/Sent tables | ✅ | One generic `DataTable` with per-view column configs, pagination, skeletons, empty states (`src/components/ui/DataTable.tsx`, `src/components/email/EmailTables.tsx`). |
-| Search | ✅ | Debounced, wired to `/api/search` (`src/components/email/SearchBar.tsx`). |
-| Slack connect UI | ✅ | Pill + connect/disconnect (`src/components/layout/SlackPill.tsx`). |
-| Bull Board link | ✅ | Linked from the header. |
+| Google and email sign-in | ✅ | Custom-styled Google button plus react-hook-form login (`src/app/page.tsx`, `src/hooks/useAuth.ts`). |
+| Figma mailbox | ✅ | Sidebar with counts, search/filter/refresh, rows with time pills (`src/components/email/MailboxView.tsx`, `EmailRow.tsx`, `StatusPill.tsx`). |
+| Reading view | ✅ | `src/components/email/EmailReader.tsx`. |
+| Compose | ✅ | Tiptap editor, chips, Upload List, attachments, Send Later (`src/components/email/ComposeForm.tsx`). |
+| Live schedule preview | ✅ | Client-side mirror of the server planner (`src/lib/schedulePreview.ts`); warns when the hourly cap defers emails. |
+| Live quota panel | ✅ | `GET /api/senders/quotas` reads the limiter's own Redis keys (`src/components/dashboard/QuotaPanel.tsx`). |
+| Search | ✅ | Debounced 300 ms, Elasticsearch with Postgres fallback, scoped to the mailbox. |
+| Slack connect UI | ✅ | Settings page: connect, test notification, disconnect. |
+| Bull Board link | ✅ | Account menu → Queue dashboard. |
+| Optimistic actions | ✅ | Star, archive, delete and cancel update every cached view and roll back on failure (`src/hooks/useEmails.ts`). |
 | Typed API client, no `any` | ✅ | `src/lib/api.ts`, `src/types/api.ts` mirrors backend response shapes. |
 
 ## API reference
@@ -459,21 +519,35 @@ Run `npm run load:seed -- --email you@gmail.com --count 1000 --limit 200` (2 act
 Every response is `{ success, data? } | { success: false, error }`.
 
 ```
-POST   /api/auth/google          { credential } -> { user }
+POST   /api/auth/google          { accessToken } | { credential } -> { user }
+POST   /api/auth/email           { email, password } -> { user }  (signs in, or creates the account)
 GET    /api/auth/me              -> { user }
 POST   /api/auth/logout          -> { loggedOut }
 
 GET    /api/senders              -> Sender[]
 POST   /api/senders              { label, smtpHost, smtpPort, smtpSecure, smtpUser, smtpPass, fromAddress, hourlyLimit? } -> Sender
 POST   /api/senders/ethereal     { hourlyLimit? } -> Sender & { etherealLogin }
+POST   /api/senders/verify       { smtpHost, smtpPort, smtpSecure, smtpUser, smtpPass } -> { ok, latencyMs, error? }
+POST   /api/senders/:id/verify   -> { ok, latencyMs, error? }
+PATCH  /api/senders/:id          { label?, hourlyLimit?, isActive? } -> Sender
+GET    /api/senders/quotas       -> { windowStart, windowEnd, senders: [{ used, limit, deferred, ... }] }
 
-POST   /api/campaigns            { subject, body, recipients[], startAt, delayBetweenMs, hourlyLimit?, senderIds[] } -> { campaign, plan }
+POST   /api/attachments          raw body, headers X-Filename (URI-encoded) and X-Content-Type -> { id, filename, contentType, size }
+GET    /api/attachments/:id      -> the file (images inline, everything else as a download)
+DELETE /api/attachments/:id      -> removes an upload not yet used by a campaign
+
+POST   /api/campaigns            { subject, body, bodyFormat?, attachmentIds?, recipients[], startAt, delayBetweenMs, hourlyLimit?, senderIds[] } -> { campaign, plan }
 GET    /api/campaigns            ?page&limit -> { items, page, limit, total }
 GET    /api/campaigns/:id        -> Campaign & { counts }
 DELETE /api/campaigns/:id        -> cancels every still-pending EmailJob
 
-GET    /api/emails/scheduled     ?page&limit -> { items, page, limit, total }
-GET    /api/emails/sent          ?page&limit -> { items, page, limit, total }
+GET    /api/emails/scheduled     ?page&limit&status&sort&order&starred&archived -> { items, page, limit, total }
+GET    /api/emails/sent          (same query) -> { items, page, limit, total }
+GET    /api/emails/throughput    -> sent per 5-minute bucket over the last hour
+GET    /api/emails/recent        ?limit -> latest state changes
+GET    /api/emails/:id           -> full email: body, attachments, delivery details
+PATCH  /api/emails/:id           { starred?, archived? } -> Email
+DELETE /api/emails/:id           -> removes from the mailbox (cancels a pending send first)
 POST   /api/emails/:id/cancel    -> cancels one EmailJob
 GET    /api/emails/stats         ?since -> { scheduled, sentToday, failed, rateLimited, currentHour }
 
@@ -540,9 +614,16 @@ so you can see the plan and the result side by side. Recipients use the reserved
 - **Secrets encrypted with a single symmetric key from the environment** (`ENCRYPTION_KEY`),
   not a KMS with envelope encryption and key rotation. Appropriate for a demo/assignment scope;
   a production deployment would want per-tenant keys and rotation.
-- **No Figma was provided with this assignment.** The UI was designed to the written spec (a
-  Linear/Vercel-style quiet dashboard) rather than to a mockup; see the design tokens in
-  `frontend/src/app/globals.css`.
+- **Screens beyond the Figma.** The design covers login, the mailbox, the reading view and
+  compose. Overview, Campaigns, Senders and Settings are not in it; they reuse its tokens and
+  components, and are the part of the UI that is interpretation rather than reproduction.
+- **Attachments live in Postgres** (`bytea`), capped at 5 MB each, 5 per campaign and 10 MB in
+  total. That keeps a campaign's files transactional with the campaign and the restart story
+  simple; an object store would be the next step for larger files.
+- **Rich text is sanitized on the server** to the tags and styles the editor can produce, and
+  sent with a plain-text alternative.
+- **Email sign-up is open and unverified.** Anyone can create an account with an address; there
+  is no confirmation email. Google accounts are protected from takeover by this path.
 - **No multi-tenant isolation beyond per-user scoping.** Every query is scoped by `userId`, but
   there's no org/workspace concept, row-level security, or per-tenant resource quotas.
 - **No template engine, no unsubscribe/bounce handling.** Out of scope for a scheduler whose job

@@ -140,7 +140,7 @@ export function AppearanceSection() {
         <CardDescription>Light is the default. System follows your device.</CardDescription>
       </CardHeader>
       <CardContent>
-        <div role="radiogroup" aria-label="Theme" className="inline-flex rounded-full bg-field p-1">
+        <div role="radiogroup" aria-label="Theme" className="inline-flex w-fit rounded-full bg-field p-1">
           {THEMES.map((t) => (
             <ToggleGroupItem key={t.value} selected={hydrated && theme === t.value} onSelect={() => setTheme(t.value)}>
               {t.label}
@@ -160,7 +160,7 @@ export function AccountSection() {
       <CardHeader>
         <CardTitle className="text-base">Account</CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-wrap items-center justify-between gap-4">
+      <CardContent className="flex-row flex-wrap items-center justify-between gap-4">
         {user ? (
           <div className="flex min-w-0 items-center gap-3">
             <UserAvatar user={user} className="size-10" />

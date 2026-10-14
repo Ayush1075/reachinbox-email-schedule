@@ -19,27 +19,26 @@ Seed at least one Google-linked user with 2 Ethereal senders beforehand
 
 ## Shot list
 
-**0:00–0:30 — Google login**
-Open tab 1, show the login page, sign in with Google. Call out: real OAuth, httpOnly session
-cookie, no mock auth path.
+**0:00–0:30 — Login**
+Open tab 1, show the login page, click Login with Google. Call out: real OAuth, httpOnly session
+cookie, no mock auth path (email and password sign-in is there too).
 
-**0:30–1:00 — Dashboard tour**
-Point out the stat cards (Total Scheduled / Sent Today / Failed / current-hour quota meter —
-note it's reading the *same Redis keys the rate limiter itself increments*, not a separate
-estimate), the Scheduled/Sent tabs (URL-synced — refresh the page to show the tab survives it),
-and the Slack pill in the header.
+**0:30–1:00 — Tour**
+Show the Scheduled and Sent mailboxes (sidebar counts, search, filter), then Overview: the stat
+cards and the hourly quota panel — note it reads the *same Redis keys the rate limiter itself
+increments*, not a separate estimate. Mention Settings holds the Slack connection.
 
 **1:00–2:00 — Compose with CSV upload**
-Click "Compose New Email." Drag in the prepared CSV. Call out the live "N valid email addresses
-detected" count plus any invalid-row count. Fill in subject/body, pick both Ethereal senders, set
-start time ~1 minute out, set a delay and hourly limit that will force at least one sender into a
+Click Compose. Use Upload List with the prepared CSV and call out the "N valid email addresses"
+line with its invalid and duplicate counts. Fill in subject and body (show the toolbar), attach a
+file, pick both Ethereal senders in From, use the clock to Send Later about a minute out, set a delay and hourly limit that will force at least one sender into a
 second hour window. Point at the live schedule preview line ("X emails · N senders · ... →
 completes in ~Y, finishing around HH:MM"). Submit.
 
 **2:00–2:45 — Watch it work**
-Back on the dashboard, show rows in the Scheduled tab, then — as the start time arrives — watch
-rows move to the Sent tab (5s poll). Click a **Preview** link on a sent row; it opens the actual
-rendered email in Ethereal's viewer in a new tab. This is the single most convincing "it's real"
+Back in the Scheduled mailbox, then — as the start time arrives — watch rows leave it and appear
+in Sent (5s poll). Open a sent email and click **View delivered message in Ethereal**; it opens
+the actual rendered email, attachment included, in a new tab. This is the single most convincing "it's real"
 moment — don't rush it.
 
 **2:45–3:15 — Bull Board**

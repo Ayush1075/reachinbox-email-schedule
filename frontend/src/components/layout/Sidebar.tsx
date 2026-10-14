@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
 import { useMailboxCounts } from '@/hooks/useEmails';
+import { useHydrated } from '@/hooks/useHydrated';
 import { formatNumber } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { AccountCard } from './AccountMenu';
@@ -16,6 +17,7 @@ import { OnbLogo } from './OnbLogo';
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const counts = useMailboxCounts();
+  const hydrated = useHydrated();
 
   return (
     <div className="flex h-full flex-col px-2 pt-[19px] pb-4">
@@ -49,7 +51,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             <ul>
               {section.items.map(({ href, label, icon: Icon, count }) => {
                 const active = isActive(pathname, href);
-                const total = count ? counts[count] : undefined;
+                const total = count && hydrated ? counts[count] : undefined;
                 return (
                   <li key={href}>
                     <Link
