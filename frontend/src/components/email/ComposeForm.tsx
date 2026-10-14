@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Clock, Loader2, Paperclip } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { FocusHeader } from '@/components/layout/FocusHeader';
@@ -45,6 +45,10 @@ const schema = z.object({
 });
 type FormValues = z.infer<typeof schema>;
 
+/** Clock reads live outside the component so render and handlers stay pure. */
+const isTooSoon = (d: Date) => d.getTime() < Date.now() + MIN_LEAD_MS;
+const startOrNow = (d: Date | null) => (d ?? new Date()).toISOString();
+
 type Draft = { key: string; file: File; id?: string; previewSrc?: string; uploading: boolean };
 
 const smallInput =
@@ -79,10 +83,10 @@ export function ComposeForm() {
     defaultValues: { senderIds: [], recipients: [], subject: '', delay: '', hourlyLimit: '', body: '' },
   });
   const { errors } = form.formState;
-  const values = form.watch();
+  // useWatch (not form.watch) so the React Compiler can still memoize this component.
+  const [recipients, senderIds, delay, hourlyLimit] = useWatch({ control: form.control, name: ['recipients', 'senderIds', 'delay', 'hourlyLimit'] });
 
   const activeSenders = useMemo(() => (senders.data ?? []).filter((s) => s.isActive), [senders.data]);
-  const senderIds = values.senderIds;
   const chosen = activeSenders.filter((s) => senderIds.includes(s.id));
 
   // Default to the first sender, as the design's single From field does; the user can add more.
@@ -92,24 +96,22 @@ export function ComposeForm() {
     if (firstSenderId && getValues('senderIds').length === 0) setValue('senderIds', [firstSenderId]);
   }, [firstSenderId, getValues, setValue]);
 
-  const delayMs = values.delay === '' ? 0 : Math.round(Number(values.delay) * 1000);
-  const limit = values.hourlyLimit === '' ? null : Number(values.hourlyLimit);
+  const delayMs = delay === '' ? 0 : Math.round(Number(delay) * 1000);
+  const limit = hourlyLimit === '' ? null : Number(hourlyLimit);
   const startMs = startAt?.getTime() ?? now + 10_000;
 
-  const preview = useMemo(() => {
-    if (now === 0 || values.recipients.length === 0 || chosen.length === 0 || Number.isNaN(delayMs)) return null;
+  const preview = (() => {
+    if (now === 0 || recipients.length === 0 || chosen.length === 0 || Number.isNaN(delayMs)) return null;
     const limits = chosen.map((s) => (limit && limit > 0 ? Math.min(s.effectiveHourlyLimit, limit) : s.effectiveHourlyLimit));
     const plan = previewSchedule({
       startAt: new Date(startMs),
-      recipients: values.recipients.length,
+      recipients: recipients.length,
       delayBetweenMs: delayMs,
       senderLimits: limits,
       minSpacingMs: config.data?.minDelayBetweenEmailsMs ?? 0,
     });
     return plan && { ...plan, limits, startMs };
-    // `values.recipients.length` is what matters, not the array identity.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [now, values.recipients.length, chosen.map((s) => s.id).join(), delayMs, limit, startMs, config.data?.minDelayBetweenEmailsMs]);
+  })();
 
   const totalBytes = drafts.reduce((n, d) => n + d.file.size, 0);
 
@@ -146,7 +148,7 @@ export function ComposeForm() {
 
   const submit = form.handleSubmit((v) => {
     if (drafts.some((d) => d.uploading)) return void toast.error('Wait for attachments to finish uploading');
-    if (startAt && startAt.getTime() < Date.now() + MIN_LEAD_MS) {
+    if (startAt && isTooSoon(startAt)) {
       setStartError('Pick a send time in the future.');
       return;
     }
@@ -161,7 +163,7 @@ export function ComposeForm() {
         body: v.body,
         bodyFormat: 'html',
         recipients: v.recipients,
-        startAt: (startAt ?? new Date()).toISOString(),
+        startAt: startOrNow(startAt),
         delayBetweenMs: v.delay === '' ? 0 : Math.round(Number(v.delay) * 1000),
         hourlyLimit: v.hourlyLimit === '' ? null : Number(v.hourlyLimit),
         senderIds: chosen.map((s) => s.id),
@@ -190,7 +192,7 @@ export function ComposeForm() {
 
   const spillText = (() => {
     if (!preview) return null;
-    const total = values.recipients.length;
+    const total = recipients.length;
     const perHour = preview.limits.reduce((a, b) => a + b, 0);
     return preview.deferredByCap > 0
       ? `Exceeds hourly capacity: ${formatNumber(Math.min(total, perHour))} send in the first window and ${formatNumber(preview.deferredByCap)} move to later hours.`
@@ -386,7 +388,7 @@ export function ComposeForm() {
                 preview.deferredByCap > 0 ? 'bg-amber-50 text-amber-900 dark:bg-amber-400/10 dark:text-amber-200' : 'bg-field text-muted-foreground',
               )}
             >
-              <span className="font-mono tabular-nums">{formatNumber(values.recipients.length)}</span> emails ·{' '}
+              <span className="font-mono tabular-nums">{formatNumber(recipients.length)}</span> emails ·{' '}
               <span className="font-mono tabular-nums">{chosen.length}</span> {chosen.length === 1 ? 'sender' : 'senders'} ·{' '}
               {new Set(preview.limits).size === 1 ? `${preview.limits[0]}/hour each` : 'mixed hourly limits'} → first send{' '}
               {formatTime(preview.startMs)}, completes in ~{formatDuration(preview.durationMs)} at {formatTime(preview.endsAt)}. {spillText}

@@ -58,6 +58,19 @@ export function MailboxView({ kind }: { kind: EmailListKind }) {
   const mailbox = useMailbox(kind, { ...filters, q });
   const [manualRefresh, setManualRefresh] = useState(false);
   const sentinel = useRef<HTMLLIElement>(null);
+  const searchInput = useRef<HTMLInputElement>(null);
+
+  // Cmd/Ctrl+K jumps to search from anywhere in the mailbox.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        searchInput.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = mailbox;
   useEffect(() => {
@@ -89,6 +102,7 @@ export function MailboxView({ kind }: { kind: EmailListKind }) {
         <div className="relative w-full max-w-[673px]">
           <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
           <Input
+            ref={searchInput}
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}

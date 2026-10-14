@@ -8,6 +8,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useNow } from '@/hooks/useNow';
 import { formatDateTime, toTimeInput } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
@@ -36,7 +37,8 @@ function SendLaterPanel({
 }) {
   const [draft, setDraft] = useState<Date | null>(value);
   const [calendarOpen, setCalendarOpen] = useState(false);
-  const tooSoon = draft !== null && draft.getTime() < Date.now() + MIN_LEAD_MS;
+  const now = useNow();
+  const tooSoon = draft !== null && draft.getTime() < now + MIN_LEAD_MS;
 
   const pickDay = (day: Date | undefined) => {
     if (!day) return;

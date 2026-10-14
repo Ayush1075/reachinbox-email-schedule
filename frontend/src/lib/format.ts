@@ -51,11 +51,6 @@ export function pluralize(count: number, singular: string, plural = `${singular}
   return `${formatNumber(count)} ${count === 1 ? singular : plural}`;
 }
 
-/** Local value for <input type="datetime-local">. */
-export function toDateTimeLocal(date: Date): string {
-  return format(date, "yyyy-MM-dd'T'HH:mm");
-}
-
 /** Local "HH:mm" for an <input type="time">. */
 export function toTimeInput(date: Date): string {
   return format(date, 'HH:mm');

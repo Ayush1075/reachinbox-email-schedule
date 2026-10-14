@@ -20,6 +20,10 @@ export const queryKeys = {
     throughput: ['emails', 'throughput'] as const,
     recent: ['emails', 'recent'] as const,
   },
+  campaigns: {
+    all: ['campaigns'] as const,
+    list: (page: number) => ['campaigns', 'list', page] as const,
+  },
   senders: {
     all: ['senders'] as const,
     list: ['senders', 'list'] as const,

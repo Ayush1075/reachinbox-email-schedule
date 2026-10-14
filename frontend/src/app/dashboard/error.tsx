@@ -2,23 +2,23 @@
 
 import { AlertTriangle } from 'lucide-react';
 import { useEffect } from 'react';
-import { Button } from '@/components/legacy-ui/Button';
+import { Button } from '@/components/ui/button';
 
-/** Route error boundary for the dashboard (Next 16: `retry` re-fetches and re-renders the segment). */
+/** Error boundary for the dashboard area: recoverable, never a blank screen. */
 export default function DashboardError({ error, retry }: { error: Error & { digest?: string }; retry: () => void }) {
   useEffect(() => {
     console.error(error);
   }, [error]);
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-md rounded-[8px] border border-border bg-surface p-8 text-center">
-        <div className="mx-auto mb-4 flex size-10 items-center justify-center rounded-[8px] bg-red-50 text-danger">
+    <main className="flex min-h-svh items-center justify-center px-4">
+      <div className="w-full max-w-md text-center">
+        <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
           <AlertTriangle className="size-5" aria-hidden />
-        </div>
-        <h1 className="text-base font-semibold">The dashboard couldn’t load</h1>
-        <p className="mt-1 text-sm text-fg-muted">{error.message || 'An unexpected error occurred.'}</p>
-        <Button className="mt-6" onClick={retry}>
+        </span>
+        <h1 className="mt-4 text-base font-semibold">This page couldn&apos;t load</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{error.message || 'An unexpected error occurred.'}</p>
+        <Button className="mt-6 rounded-full px-5" onClick={retry}>
           Try again
         </Button>
       </div>

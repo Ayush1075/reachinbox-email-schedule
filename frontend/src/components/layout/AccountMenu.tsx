@@ -3,8 +3,6 @@
 import { ChevronDown, ExternalLink, Laptop, LogOut, Moon, Settings, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -20,11 +18,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useLogout, useMe } from '@/hooks/useAuth';
+import { useMe } from '@/hooks/useAuth';
 import { useHydrated } from '@/hooks/useHydrated';
-import { API_URL, errorMessage } from '@/lib/api';
+import { API_URL } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import type { User } from '@/types/api';
+import { useSignOut } from './useSignOut';
 
 export const BULL_BOARD_URL = `${API_URL}/admin/queues`;
 
@@ -55,8 +54,7 @@ const themes = [
 
 /** Account menu items shared by the sidebar card and the avatar in full-page views. */
 function AccountMenuContent({ user, align }: { user: User; align: 'start' | 'end' }) {
-  const router = useRouter();
-  const logout = useLogout();
+  const { signOut, isPending } = useSignOut();
   const { theme, setTheme } = useTheme();
 
   return (
@@ -97,15 +95,7 @@ function AccountMenuContent({ user, align }: { user: User; align: 'start' | 'end
         </DropdownMenuSubContent>
       </DropdownMenuSub>
       <DropdownMenuSeparator />
-      <DropdownMenuItem
-        disabled={logout.isPending}
-        onSelect={() =>
-          logout.mutate(undefined, {
-            onSuccess: () => router.replace('/'),
-            onError: (err) => toast.error(errorMessage(err)),
-          })
-        }
-      >
+      <DropdownMenuItem disabled={isPending} onSelect={signOut}>
         <LogOut aria-hidden />
         Log out
       </DropdownMenuItem>

@@ -1,71 +1,48 @@
 'use client';
 
-import type { ReactNode } from 'react';
-import { Skeleton } from '@/components/legacy-ui/Skeleton';
-import { useCountUp } from '@/hooks/useCountUp';
+import { AlertTriangle, CalendarClock, Gauge, Send, type LucideIcon } from 'lucide-react';
+import { AnimatedNumber } from '@/components/common/AnimatedNumber';
+import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useStats } from '@/hooks/useStats';
-import { cn } from '@/lib/cn';
-import { formatTime } from '@/lib/format';
-import type { Stats } from '@/types/api';
+import { formatNumber, formatTime } from '@/lib/format';
+import { cn } from '@/lib/utils';
 
-function Card({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
+function StatCard({
+  label,
+  icon: Icon,
+  value,
+  total,
+  caption,
+  tone,
+}: {
+  label: string;
+  icon: LucideIcon;
+  value: number | undefined;
+  /** Renders "value / total" (the current-hour usage card). */
+  total?: number;
+  caption?: string;
+  tone?: 'danger';
+}) {
   return (
-    <div className={cn('rounded-[8px] border border-border bg-surface p-5 shadow-[var(--shadow-card)]', className)}>
-      <p className="text-[12px] font-medium tracking-wide text-fg-muted uppercase">{label}</p>
-      <div className="mt-2">{children}</div>
-    </div>
-  );
-}
-
-function StatNumber({ value, tone }: { value: number | undefined; tone?: 'danger' }) {
-  const shown = useCountUp(value);
-  if (shown === undefined) return <Skeleton className="h-8 w-16" />;
-  return (
-    <p className={cn('font-mono text-[28px] leading-8 font-semibold tabular-nums', tone === 'danger' && shown > 0 && 'text-danger')}>
-      {shown.toLocaleString()}
-    </p>
-  );
-}
-
-function QuotaCard({ stats }: { stats: Stats | undefined }) {
-  const used = useCountUp(stats?.currentHour.used);
-  const limit = stats?.currentHour.limit ?? 0;
-  const pct = limit > 0 && used !== undefined ? Math.min(100, (used / limit) * 100) : 0;
-  const tone = pct >= 100 ? 'bg-danger' : pct >= 80 ? 'bg-warning' : 'bg-primary';
-
-  return (
-    <Card label="Current hour usage">
-      {stats === undefined || used === undefined ? (
-        <Skeleton className="h-8 w-28" />
-      ) : (
-        <>
-          <p className="font-mono text-[28px] leading-8 font-semibold tabular-nums">
-            {used.toLocaleString()}
-            <span className="text-base font-normal text-fg-muted"> / {limit.toLocaleString()}</span>
-          </p>
-          <div
-            className="mt-3 h-1 overflow-hidden rounded-full bg-stone-100"
-            role="progressbar"
-            aria-valuenow={used}
-            aria-valuemin={0}
-            aria-valuemax={limit}
-            aria-label="Emails sent this hour across all senders"
-          >
-            <div className={cn('h-full rounded-full transition-[width] duration-500 ease-out', tone)} style={{ width: `${pct}%` }} />
-          </div>
-          <ul className="mt-3 space-y-1">
-            {stats.currentHour.senders.map((s) => (
-              <li key={s.senderId} className="flex items-center justify-between gap-2 text-[12px] text-fg-muted" title={s.fromAddress}>
-                <span className="truncate">{s.label}</span>
-                <span className={cn('font-mono tabular-nums', s.used >= s.limit && 'font-medium text-danger')}>
-                  {s.used}/{s.limit}
-                </span>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-2 text-[12px] text-fg-muted">Window resets at {formatTime(stats.currentHour.windowEnd)}</p>
-        </>
-      )}
+    <Card className="gap-0 py-4 shadow-none">
+      <CardContent className="px-5">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-medium text-muted-foreground">{label}</p>
+          <Icon className="size-4 text-muted-foreground" aria-hidden />
+        </div>
+        <div className="mt-3 min-h-9">
+          {value === undefined ? (
+            <Skeleton className="h-8 w-20" />
+          ) : (
+            <p className={cn('font-mono text-3xl leading-9 font-semibold tabular-nums', tone === 'danger' && value > 0 && 'text-destructive')}>
+              <AnimatedNumber value={value} />
+              {total !== undefined && <span className="text-base font-normal text-muted-foreground"> / {formatNumber(total)}</span>}
+            </p>
+          )}
+        </div>
+        <p className="mt-1 min-h-4 text-xs text-muted-foreground">{caption}</p>
+      </CardContent>
     </Card>
   );
 }
@@ -73,18 +50,22 @@ function QuotaCard({ stats }: { stats: Stats | undefined }) {
 export function StatCards() {
   const { data } = useStats();
   return (
-    <section aria-label="Overview" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <Card label="Total scheduled">
-        <StatNumber value={data?.scheduled} />
-        {data && data.rateLimited > 0 && <p className="mt-1 text-[12px] text-warning">{data.rateLimited.toLocaleString()} deferred by rate limit</p>}
-      </Card>
-      <Card label="Sent today">
-        <StatNumber value={data?.sentToday} />
-      </Card>
-      <Card label="Failed">
-        <StatNumber value={data?.failed} tone="danger" />
-      </Card>
-      <QuotaCard stats={data} />
+    <section aria-label="Overview" className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <StatCard
+        label="Total scheduled"
+        icon={CalendarClock}
+        value={data?.scheduled}
+        caption={data && data.rateLimited > 0 ? `${formatNumber(data.rateLimited)} deferred by the hourly limit` : 'Waiting to be sent'}
+      />
+      <StatCard label="Sent today" icon={Send} value={data?.sentToday} caption="Since local midnight" />
+      <StatCard label="Failed" icon={AlertTriangle} value={data?.failed} tone="danger" caption="Needs attention" />
+      <StatCard
+        label="Current hour usage"
+        icon={Gauge}
+        value={data?.currentHour.used}
+        total={data?.currentHour.limit}
+        caption={data ? `Window resets at ${formatTime(data.currentHour.windowEnd)}` : undefined}
+      />
     </section>
   );
 }

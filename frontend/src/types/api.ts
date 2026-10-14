@@ -148,6 +148,9 @@ export type Campaign = {
   createdAt: string;
 };
 
+/** GET /api/campaigns row: the campaign plus how many of its emails are in each status. */
+export type CampaignSummary = Campaign & { counts: Partial<Record<EmailStatus, number>> };
+
 export type CreateCampaignResult = {
   campaign: Campaign;
   plan: { endsAt: string; deferredByCap: number };

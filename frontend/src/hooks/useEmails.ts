@@ -97,15 +97,6 @@ export function useMailbox(kind: EmailListKind, filters: MailboxFilters) {
   });
 }
 
-export function useEmailSearch(query: SearchQuery, enabled = true) {
-  return useQuery({
-    queryKey: queryKeys.emails.search(query),
-    queryFn: ({ signal }) => fetchSearch(query, signal),
-    enabled,
-    placeholderData: keepPreviousData,
-  });
-}
-
 export function useEmailDetail(id: string) {
   return useQuery({
     queryKey: queryKeys.emails.detail(id),

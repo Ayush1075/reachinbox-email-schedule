@@ -70,7 +70,6 @@ export function SenderPicker({
         <button
           type="button"
           aria-label={`From: ${chosen.length === 0 ? 'none selected' : chosen.map((s) => s.fromAddress).join(', ')}`}
-          aria-invalid={invalid ? true : undefined}
           aria-describedby={describedBy}
           className={cn(
             'inline-flex h-8 max-w-full items-center gap-2 rounded-lg bg-field px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/40',
