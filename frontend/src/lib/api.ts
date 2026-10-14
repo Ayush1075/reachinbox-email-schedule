@@ -23,7 +23,7 @@ type Query = Record<string, string | number | undefined | null>;
  */
 export async function api<T>(
   path: string,
-  options: { method?: string; body?: unknown; query?: Query; signal?: AbortSignal } = {},
+  options: { method?: string; body?: unknown; file?: File; query?: Query; signal?: AbortSignal } = {},
 ): Promise<T> {
   const url = new URL(path, API_URL);
   for (const [k, v] of Object.entries(options.query ?? {})) {
@@ -35,8 +35,17 @@ export async function api<T>(
     res = await fetch(url, {
       method: options.method ?? 'GET',
       credentials: 'include',
-      headers: options.body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
-      body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+      headers: options.file
+        ? {
+            // Raw bytes: the API reads the name and real media type from headers.
+            'Content-Type': 'application/octet-stream',
+            'X-Filename': encodeURIComponent(options.file.name),
+            'X-Content-Type': options.file.type || 'application/octet-stream',
+          }
+        : options.body !== undefined
+          ? { 'Content-Type': 'application/json' }
+          : undefined,
+      body: options.file ?? (options.body !== undefined ? JSON.stringify(options.body) : undefined),
       signal: options.signal,
     });
   } catch (err) {
