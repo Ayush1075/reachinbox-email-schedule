@@ -1,0 +1,13 @@
+# One hostname, one origin: the API and the dashboard share cookies and need no CORS.
+{$DOMAIN} {
+	encode zstd gzip
+
+	@backend path /api/* /health /health/* /admin/*
+	handle @backend {
+		reverse_proxy api:4000
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
+}

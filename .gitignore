@@ -27,3 +27,6 @@ npm-debug.log*
 *.swp
 .DS_Store
 Thumbs.db
+
+# Production secrets
+.env.prod

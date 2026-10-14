@@ -1,0 +1,121 @@
+# Production stack, sized for a 1 GB VM (Oracle Always Free E2.1.Micro).
+# Elasticsearch is intentionally absent: search falls back to Postgres.
+#
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+name: onb
+
+x-backend-env: &backend-env
+  NODE_ENV: production
+  LOG_LEVEL: info
+  DATABASE_URL: postgresql://reachinbox:${POSTGRES_PASSWORD}@postgres:5432/email_scheduler?schema=public
+  REDIS_URL: redis://redis:6379
+  FRONTEND_URL: https://${DOMAIN}
+  API_PUBLIC_URL: https://${DOMAIN}
+  JWT_SECRET: ${JWT_SECRET}
+  ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+  GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+  BULL_BOARD_PASSWORD: ${BULL_BOARD_PASSWORD}
+  SLACK_CLIENT_ID: ${SLACK_CLIENT_ID:-}
+  SLACK_CLIENT_SECRET: ${SLACK_CLIENT_SECRET:-}
+  SLACK_REDIRECT_URI: ${SLACK_REDIRECT_URI:-}
+  WORKER_CONCURRENCY: 3
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: reachinbox
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: email_scheduler
+    command: ["postgres", "-c", "shared_buffers=64MB", "-c", "max_connections=40", "-c", "work_mem=4MB"]
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reachinbox -d email_scheduler"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # AOF keeps delayed jobs across restarts; noeviction so a job is never silently dropped.
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec", "--maxmemory", "160mb", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - redis-data:/data
+    mem_limit: 200m
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  migrate:
+    image: onb-backend:latest
+    build: ./backend
+    restart: "no"
+    command: ["node_modules/.bin/prisma", "migrate", "deploy"]
+    environment:
+      DATABASE_URL: postgresql://reachinbox:${POSTGRES_PASSWORD}@postgres:5432/email_scheduler?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    image: onb-backend:latest
+    restart: unless-stopped
+    command: ["node", "dist/index.js"]
+    environment: *backend-env
+    mem_limit: 256m
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  worker:
+    image: onb-backend:latest
+    restart: unless-stopped
+    command: ["node", "dist/worker.js"]
+    environment: *backend-env
+    mem_limit: 256m
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  web:
+    image: onb-frontend:latest
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: https://${DOMAIN}
+        NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+    restart: unless-stopped
+    mem_limit: 192m
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    mem_limit: 64m
+    depends_on:
+      - api
+      - web
+
+volumes:
+  postgres-data:
+  redis-data:
+  caddy-data:
+  caddy-config:
