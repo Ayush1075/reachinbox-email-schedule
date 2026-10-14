@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useLogout, useMe } from '@/hooks/useAuth';
+import { useHydrated } from '@/hooks/useHydrated';
 import { API_URL, errorMessage } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import type { User } from '@/types/api';
@@ -115,7 +116,8 @@ function AccountMenuContent({ user, align }: { user: User; align: 'start' | 'end
 /** The sidebar's account card: avatar, name, email and a chevron, as in the design. */
 export function AccountCard() {
   const { data: user } = useMe();
-  if (!user) return <Skeleton className="h-14 w-full rounded-xl" aria-label="Loading account" />;
+  const hydrated = useHydrated();
+  if (!user || !hydrated) return <Skeleton className="h-14 w-full rounded-xl" aria-label="Loading account" />;
 
   return (
     <DropdownMenu>
@@ -141,7 +143,8 @@ export function AccountCard() {
 /** Avatar button for the full-page views (reading view, compose). */
 export function AccountAvatarButton() {
   const { data: user } = useMe();
-  if (!user) return <Skeleton className="size-8 rounded-full" aria-label="Loading account" />;
+  const hydrated = useHydrated();
+  if (!user || !hydrated) return <Skeleton className="size-8 rounded-full" aria-label="Loading account" />;
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
